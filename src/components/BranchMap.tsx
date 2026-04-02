@@ -7,6 +7,7 @@ type Branch = Tables<"branches">;
 interface BranchMapProps {
   branches: Branch[];
   onMapClick: (lat: number, lng: number) => void;
+  pendingLocation?: { lat: number; lng: number } | null;
 }
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
