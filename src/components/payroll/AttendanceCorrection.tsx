@@ -131,8 +131,9 @@ const AttendanceCorrection = () => {
               <TableHead>Rest Hrs</TableHead>
               <TableHead>Net Hrs</TableHead>
               <TableHead>OT Hrs</TableHead>
+              <TableHead>Late</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-16">Edit</TableHead>
+              <TableHead className="w-24">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
