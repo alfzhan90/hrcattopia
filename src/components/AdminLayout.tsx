@@ -1,7 +1,8 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, LogOut, ClipboardList, DollarSign } from "lucide-react";
+import { Building2, Users, LogOut, ClipboardList, DollarSign, Settings, FileSpreadsheet } from "lucide-react";
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
