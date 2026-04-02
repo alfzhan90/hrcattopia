@@ -45,6 +45,10 @@ const AdminLayout = () => {
             <Users className="h-4 w-4" />
             Staff
           </NavLink>
+          <NavLink to="/admin/records" className={linkClass}>
+            <FileSpreadsheet className="h-4 w-4" />
+            Attendance Records
+          </NavLink>
           <NavLink to="/admin/attendance" className={linkClass}>
             <ClipboardList className="h-4 w-4" />
             Live Attendance

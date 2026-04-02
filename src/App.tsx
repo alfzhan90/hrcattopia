@@ -78,8 +78,10 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     >
+      <Route path="company" element={<CompanySettings />} />
       <Route path="branches" element={<Branches />} />
       <Route path="staff" element={<Staff />} />
+      <Route path="records" element={<AttendanceRecords />} />
       <Route path="attendance" element={<LiveAttendance />} />
       <Route path="payroll" element={<Payroll />} />
     </Route>
