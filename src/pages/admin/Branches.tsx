@@ -108,7 +108,7 @@ const Branches = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingBranch(null);
-    setForm({ name: "", address: "", latitude: "", longitude: "", radius_meters: "100" });
+    clearDraft();
   };
 
   const openEdit = (branch: Branch) => {
