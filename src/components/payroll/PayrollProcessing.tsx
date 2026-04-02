@@ -311,9 +311,11 @@ const PayrollProcessing = () => {
     if (!s) return;
     const branch = branches.find((b: any) => b.id === s.branch_id);
 
+    const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
       companyName: "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
+      periodLabel: period.label,
       staffId: s.staff_id,
       staffName: s.name,
       icNumber: s.ic_number,

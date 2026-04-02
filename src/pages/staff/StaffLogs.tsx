@@ -49,6 +49,7 @@ const StaffLogs = () => {
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24 space-y-4">
       <h1 className="text-xl font-bold">My Attendance Logs</h1>
+      <p className="text-xs text-muted-foreground">Pay cycle: 24th prev month – 23rd current month</p>
 
       {/* Date Range Filter */}
       <Card>

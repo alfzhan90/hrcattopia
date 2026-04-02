@@ -86,7 +86,9 @@ const StaffPayslips = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{format(new Date(p.month), "MMMM yyyy")}</p>
-                  <p className="text-xs text-muted-foreground">Gross: RM {Number(p.gross_pay).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getPayPeriod(format(new Date(p.month), "yyyy-MM")).label}
+                  </p>
                 </div>
                 <p className="font-bold text-sm">RM {Number(p.net_pay).toFixed(2)}</p>
               </CardContent>

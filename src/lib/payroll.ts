@@ -1,4 +1,23 @@
 // Malaysian 2026 Statutory Calculation Helpers
+import { format } from "date-fns";
+
+/**
+ * Pay period: 24th of previous month to 23rd of selected month.
+ * Input: "yyyy-MM" string (e.g. "2026-04").
+ * Returns { start: Date, end: Date, label: string }.
+ */
+export const getPayPeriod = (monthStr: string) => {
+  const [year, month] = monthStr.split("-").map(Number);
+  // Start: 24th of previous month
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const start = new Date(prevYear, prevMonth - 1, 24);
+  // End: 23rd of selected month
+  const end = new Date(year, month - 1, 23, 23, 59, 59, 999);
+  const label = `${format(start, "dd/MM/yyyy")} – ${format(end, "dd/MM/yyyy")}`;
+  return { start, end, label };
+};
+
 
 /** Calculate rest hours: 1 hour for every 5 hours worked */
 export const calcRestHours = (totalHours: number): number => {
