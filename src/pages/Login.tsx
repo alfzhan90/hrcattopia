@@ -80,9 +80,13 @@ const Login = () => {
         if (error) throw error;
       }
     } catch (error: any) {
+      let msg = error?.message || "An unknown error occurred.";
+      if (msg.includes("Invalid login credentials")) msg = "Invalid email or password. Please try again.";
+      else if (msg.includes("Email not confirmed")) msg = "Please verify your email before signing in.";
+      else if (msg.includes("fetch") || msg.includes("network")) msg = "Network error. Please check your connection.";
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Sign-in failed",
+        description: msg,
         variant: "destructive",
       });
     } finally {
