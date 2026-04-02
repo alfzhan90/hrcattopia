@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
 import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
+import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -37,6 +39,8 @@ const StaffHome = () => {
     enabled: !!user,
   });
 
+  const isAreaManager = profile?.employment_type === "Area-Manager";
+
   const { data: branch } = useQuery({
     queryKey: ["my-branch", profile?.branch_id],
     queryFn: async () => {
@@ -44,8 +48,24 @@ const StaffHome = () => {
       if (error) throw error;
       return data as Branch;
     },
-    enabled: !!profile?.branch_id,
+    enabled: !!profile?.branch_id && !isAreaManager,
   });
+
+  // Area Manager: fetch all branches
+  const { data: allBranches = [] } = useQuery({
+    queryKey: ["all-branches-am"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").order("name");
+      if (error) throw error;
+      return data as Branch[];
+    },
+    enabled: isAreaManager,
+  });
+
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const activeBranch = isAreaManager
+    ? allBranches.find((b) => b.id === selectedBranchId) ?? null
+    : branch ?? null;
 
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
