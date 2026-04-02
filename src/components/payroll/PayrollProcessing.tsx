@@ -347,6 +347,59 @@ const PayrollProcessing = () => {
     URL.revokeObjectURL(url);
   };
 
+  const generateWarningLetter = (profileId: string, lateCount: number) => {
+    const s = staff.find((st) => st.id === profileId);
+    if (!s) return;
+    
+    const { jsPDF } = require("jspdf");
+    const doc = new jsPDF();
+    const monthLabel = format(new Date(monthDate), "MMMM yyyy");
+    
+    doc.setFontSize(16);
+    doc.text("WARNING LETTER", 105, 30, { align: "center" });
+    doc.setFontSize(11);
+    doc.text("CATTOPIA SDN BHD", 105, 40, { align: "center" });
+    
+    doc.setFontSize(10);
+    const y = 60;
+    doc.text(`Date: ${format(new Date(), "dd MMMM yyyy")}`, 20, y);
+    doc.text(`To: ${s.name} (${s.staff_id})`, 20, y + 10);
+    doc.text(`IC: ${s.ic_number}`, 20, y + 17);
+    doc.text(`Subject: Formal Warning — Excessive Lateness (${monthLabel})`, 20, y + 30);
+    
+    const body = [
+      `Dear ${s.name},`,
+      "",
+      `This letter serves as a formal warning regarding your attendance record for ${monthLabel}.`,
+      `Our records indicate that you have been late on ${lateCount} occasion(s) this month,`,
+      `exceeding the company's allowable threshold of 3 late arrivals per month.`,
+      "",
+      "As per company policy, repeated lateness disrupts operations and affects team productivity.",
+      "You are hereby advised to take immediate corrective action to ensure punctuality.",
+      "",
+      "Failure to improve may result in further disciplinary action, up to and including",
+      "termination of employment.",
+      "",
+      "Please acknowledge receipt of this letter by signing below.",
+      "",
+      "",
+      "______________________________",
+      "Employee Signature & Date",
+      "",
+      "",
+      "______________________________",
+      "HR / Management",
+    ];
+    
+    let textY = y + 45;
+    body.forEach((line) => {
+      doc.text(line, 20, textY);
+      textY += 6;
+    });
+    
+    doc.save(`Warning_Letter_${s.staff_id}_${format(new Date(monthDate), "yyyy-MM")}.pdf`);
+  };
+
   const getStaffName = (profileId: string) => staff.find((s) => s.id === profileId)?.name ?? "Unknown";
   const getStaffId = (profileId: string) => staff.find((s) => s.id === profileId)?.staff_id ?? "—";
   const fmt = (n: number) => `RM ${Number(n).toFixed(2)}`;
