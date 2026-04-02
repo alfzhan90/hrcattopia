@@ -14,7 +14,7 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const { user, role, loading: authLoading } = useAuth();
+  const { user, role, loading: authLoading, signOut } = useAuth();
 
   if (!authLoading && user && role === "admin") {
     return <Navigate to="/admin/branches" replace />;
@@ -24,6 +24,25 @@ const Login = () => {
     return <Navigate to="/attendance" replace />;
   }
 
+  if (!authLoading && user && !role) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl">Account access pending</CardTitle>
+            <CardDescription>
+              You are signed in, but this account does not have an app role yet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button type="button" variant="outline" className="w-full" onClick={signOut}>
+              Sign Out
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

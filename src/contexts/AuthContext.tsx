@@ -19,7 +19,49 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+const ROLE_FETCH_TIMEOUT_MS = 8000;
+
 export const useAuth = () => useContext(AuthContext);
+
+const fetchRole = async (userId: string): Promise<Enums<"app_role"> | null> => {
+  const { data: isAdmin, error: adminError } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "admin",
+  });
+
+  if (!adminError && isAdmin) {
+    return "admin";
+  }
+
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId);
+
+  if (error) {
+    return null;
+  }
+
+  const roles = data?.map((entry) => entry.role) ?? [];
+
+  if (roles.includes("admin")) {
+    return "admin";
+  }
+
+  if (roles.includes("staff")) {
+    return "staff";
+  }
+
+  return null;
+};
+
+const resolveRoleWithTimeout = (userId: string) =>
+  Promise.race<Enums<"app_role"> | null>([
+    fetchRole(userId),
+    new Promise<null>((resolve) => {
+      setTimeout(() => resolve(null), ROLE_FETCH_TIMEOUT_MS);
+    }),
+  ]);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -27,80 +69,59 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [role, setRole] = useState<Enums<"app_role"> | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchRole = async (userId: string) => {
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (error) {
-      setRole(null);
-      return null;
-    }
-
-    const nextRole = data?.role ?? null;
-    setRole(nextRole);
-    return nextRole;
-  };
-
   useEffect(() => {
     let mounted = true;
-    let resolved = false;
+    let requestId = 0;
 
-    const finishLoading = () => {
-      if (mounted && !resolved) {
-        resolved = true;
-        setLoading(false);
-      }
-    };
+    const resolveAuth = async (nextSession: Session | null) => {
+      const currentRequest = ++requestId;
 
-    // Safety timeout — never stay loading forever
-    const timeout = setTimeout(finishLoading, 5000);
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!mounted) return;
 
+      setLoading(true);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
-      if (nextSession?.user) {
-        try {
-          await fetchRole(nextSession.user.id);
-        } catch {
-          setRole(null);
-        }
-      } else {
+      if (!nextSession?.user) {
         setRole(null);
+        setLoading(false);
+        return;
       }
 
-      finishLoading();
+      try {
+        const nextRole = await resolveRoleWithTimeout(nextSession.user.id);
+
+        if (!mounted || currentRequest !== requestId) {
+          return;
+        }
+
+        setRole(nextRole);
+      } catch {
+        if (!mounted || currentRequest !== requestId) {
+          return;
+        }
+
+        setRole(null);
+      } finally {
+        if (mounted && currentRequest === requestId) {
+          setLoading(false);
+        }
+      }
+    };
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      void resolveAuth(nextSession);
     });
 
-    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
-      if (!mounted || resolved) return;
-
-      setSession(s);
-      setUser(s?.user ?? null);
-
-      if (s?.user) {
-        try {
-          await fetchRole(s.user.id);
-        } catch {
-          setRole(null);
-        }
-      } else {
-        setRole(null);
-      }
-
-      finishLoading();
+    void supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
+      void resolveAuth(nextSession);
     });
 
     return () => {
       mounted = false;
-      clearTimeout(timeout);
+      requestId += 1;
       subscription.unsubscribe();
     };
   }, []);
