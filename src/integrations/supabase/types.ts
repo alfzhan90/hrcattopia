@@ -23,6 +23,8 @@ export type Database = {
           check_out_time: string | null
           created_at: string
           id: string
+          late_minutes: number
+          late_waived: boolean
           net_hours: number
           ot_hours: number
           regular_hours: number
@@ -38,6 +40,8 @@ export type Database = {
           check_out_time?: string | null
           created_at?: string
           id?: string
+          late_minutes?: number
+          late_waived?: boolean
           net_hours?: number
           ot_hours?: number
           regular_hours?: number
@@ -53,6 +57,8 @@ export type Database = {
           check_out_time?: string | null
           created_at?: string
           id?: string
+          late_minutes?: number
+          late_waived?: boolean
           net_hours?: number
           ot_hours?: number
           regular_hours?: number
@@ -74,31 +80,37 @@ export type Database = {
         Row: {
           address: string
           created_at: string
+          grace_period_minutes: number
           id: string
           latitude: number
           longitude: number
           name: string
           radius_meters: number
+          scheduled_start: string
           updated_at: string
         }
         Insert: {
           address: string
           created_at?: string
+          grace_period_minutes?: number
           id?: string
           latitude: number
           longitude: number
           name: string
           radius_meters?: number
+          scheduled_start?: string
           updated_at?: string
         }
         Update: {
           address?: string
           created_at?: string
+          grace_period_minutes?: number
           id?: string
           latitude?: number
           longitude?: number
           name?: string
           radius_meters?: number
+          scheduled_start?: string
           updated_at?: string
         }
         Relationships: []
@@ -172,6 +184,7 @@ export type Database = {
           gross_pay: number
           holiday_pay: number
           id: string
+          late_deduction: number
           month: string
           net_pay: number
           ot_pay: number
@@ -195,6 +208,7 @@ export type Database = {
           gross_pay?: number
           holiday_pay?: number
           id?: string
+          late_deduction?: number
           month: string
           net_pay?: number
           ot_pay?: number
@@ -218,6 +232,7 @@ export type Database = {
           gross_pay?: number
           holiday_pay?: number
           id?: string
+          late_deduction?: number
           month?: string
           net_pay?: number
           ot_pay?: number

@@ -24,6 +24,8 @@ const defaultBranchForm = {
   latitude: "",
   longitude: "",
   radius_meters: "100",
+  grace_period_minutes: "10",
+  scheduled_start: "09:30",
 };
 
 const Branches = () => {
@@ -61,6 +63,8 @@ const Branches = () => {
         latitude: lat,
         longitude: lng,
         radius_meters: radius,
+        grace_period_minutes: parseInt(values.grace_period_minutes) || 10,
+        scheduled_start: values.scheduled_start || "09:30",
       };
 
       if (editingBranch) {
@@ -119,6 +123,8 @@ const Branches = () => {
       latitude: String(branch.latitude),
       longitude: String(branch.longitude),
       radius_meters: String(branch.radius_meters),
+      grace_period_minutes: String((branch as any).grace_period_minutes ?? 10),
+      scheduled_start: (branch as any).scheduled_start ?? "09:30",
     });
     setDialogOpen(true);
   };
@@ -208,6 +214,27 @@ const Branches = () => {
                   required
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Work Start Time</Label>
+                  <Input
+                    type="time"
+                    value={form.scheduled_start}
+                    onChange={(e) => setForm({ ...form, scheduled_start: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Grace Period (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={form.grace_period_minutes}
+                    onChange={(e) => setForm({ ...form, grace_period_minutes: e.target.value })}
+                    placeholder="10"
+                    required
+                  />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
                 <MapPin className="inline h-3 w-3 mr-1" />
                 Tip: Click on the map to set coordinates automatically.
@@ -253,19 +280,20 @@ const Branches = () => {
               <TableHead>Address</TableHead>
               <TableHead>Lat / Lng</TableHead>
               <TableHead>Radius</TableHead>
+              <TableHead>Start / Grace</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   Loading...
                 </TableCell>
               </TableRow>
             ) : branches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No branches yet. Click "Add Branch" or click on the map to get started.
                 </TableCell>
               </TableRow>
@@ -278,6 +306,9 @@ const Branches = () => {
                     {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}
                   </TableCell>
                   <TableCell>{branch.radius_meters}m</TableCell>
+                  <TableCell className="text-sm">
+                    {(branch as any).scheduled_start ?? "09:30"} / {(branch as any).grace_period_minutes ?? 10}min
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" onClick={() => openEdit(branch)}>

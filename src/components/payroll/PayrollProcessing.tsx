@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
 import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
+import { jsPDF } from "jspdf";
 import { format, startOfMonth, endOfMonth, startOfWeek, eachDayOfInterval, isWeekend, isSameWeek } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -22,7 +23,7 @@ const PayrollProcessing = () => {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [editOpen, setEditOpen] = useState(false);
   const [editRun, setEditRun] = useState<any>(null);
-  const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number }>>({});
+  const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number; lateCount: number; lateMinutes: number; lateDeduction: number }>>({});
 
   const monthDate = `${selectedMonth}-01`;
 
@@ -132,6 +133,17 @@ const PayrollProcessing = () => {
         const basicPay = Number(s.base_rate);
         const hourlyRate = calcHourlyRate(basicPay);
 
+        // Late deduction: (hourlyRate / 60) * lateMinutes (only non-waived)
+        let totalLateMinutes = 0;
+        let lateCount = 0;
+        staffLogs.forEach((log) => {
+          if (Number(log.late_minutes) > 0 && !log.late_waived) {
+            totalLateMinutes += Number(log.late_minutes);
+            lateCount++;
+          }
+        });
+        const lateDeduction = Math.round((hourlyRate / 60) * totalLateMinutes * 100) / 100;
+
         let totalDailyOt = 0;
         let holidayPay = 0;
 
@@ -143,39 +155,30 @@ const PayrollProcessing = () => {
           const weekKey = format(startOfWeek(new Date(log.check_in_time), { weekStartsOn: 1 }), "yyyy-MM-dd");
           const multiplier = holidayDates.get(logDate);
 
-          // Use stored net_hours if available, otherwise calculate
           const totalHrs = log.check_out_time
             ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
             : 0;
           const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
 
           if (multiplier) {
-            // Public holiday: apply multiplier to ALL hours worked (skip 8h/45h rules)
             holidayPay += Math.round(netHrs * hourlyRate * multiplier * 100) / 100;
           } else {
-            // Normal day: daily OT = net hours > 8 at 1.5x
             const dailyOt = calcDailyOt(netHrs);
             totalDailyOt += dailyOt;
-
-            // Track weekly net hours (exclude holiday days)
             weeklyNetHours[weekKey] = (weeklyNetHours[weekKey] || 0) + netHrs;
           }
         });
 
-        // Weekly OT: total net hours > 45 in a week at 1.5x (extra on top of daily OT)
         let weeklyExtraOt = 0;
         Object.values(weeklyNetHours).forEach((weekNet) => {
-          if (weekNet > 45) {
-            weeklyExtraOt += weekNet - 45;
-          }
+          if (weekNet > 45) weeklyExtraOt += weekNet - 45;
         });
 
-        // OT pay = (daily OT + weekly extra OT) * hourly rate * 1.5
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
         const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
-        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction) * 100) / 100;
+        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
@@ -200,9 +203,10 @@ const PayrollProcessing = () => {
           eis_employer: eis.employer,
           pcb: 0,
           upl_deduction: uplDeduction,
+          late_deduction: lateDeduction,
           net_pay: netPay,
           status: "draft" as const,
-          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays },
+          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays, lateCount, lateMinutes: totalLateMinutes, lateDeduction },
         });
       }
 
@@ -274,7 +278,7 @@ const PayrollProcessing = () => {
 
   const updateRunMutation = useMutation({
     mutationFn: async (run: any) => {
-      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction);
+      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction) - Number(run.late_deduction ?? 0);
       const epfEmployee = calcEpfEmployee(grossPay);
       const epfEmployer = calcEpfEmployer(grossPay);
       const socso = calcSocso(grossPay);
@@ -344,6 +348,58 @@ const PayrollProcessing = () => {
     URL.revokeObjectURL(url);
   };
 
+  const generateWarningLetter = (profileId: string, lateCount: number) => {
+    const s = staff.find((st) => st.id === profileId);
+    if (!s) return;
+    
+    const doc = new jsPDF();
+    const wMonthLabel = format(new Date(monthDate), "MMMM yyyy");
+    
+    doc.setFontSize(16);
+    doc.text("WARNING LETTER", 105, 30, { align: "center" });
+    doc.setFontSize(11);
+    doc.text("CATTOPIA SDN BHD", 105, 40, { align: "center" });
+    
+    doc.setFontSize(10);
+    const y = 60;
+    doc.text(`Date: ${format(new Date(), "dd MMMM yyyy")}`, 20, y);
+    doc.text(`To: ${s.name} (${s.staff_id})`, 20, y + 10);
+    doc.text(`IC: ${s.ic_number}`, 20, y + 17);
+    doc.text(`Subject: Formal Warning — Excessive Lateness (${wMonthLabel})`, 20, y + 30);
+    
+    const body = [
+      `Dear ${s.name},`,
+      "",
+      `This letter serves as a formal warning regarding your attendance record for ${wMonthLabel}.`,
+      `Our records indicate that you have been late on ${lateCount} occasion(s) this month,`,
+      `exceeding the company's allowable threshold of 3 late arrivals per month.`,
+      "",
+      "As per company policy, repeated lateness disrupts operations and affects team productivity.",
+      "You are hereby advised to take immediate corrective action to ensure punctuality.",
+      "",
+      "Failure to improve may result in further disciplinary action, up to and including",
+      "termination of employment.",
+      "",
+      "Please acknowledge receipt of this letter by signing below.",
+      "",
+      "",
+      "______________________________",
+      "Employee Signature & Date",
+      "",
+      "",
+      "______________________________",
+      "HR / Management",
+    ];
+    
+    let textY = y + 45;
+    body.forEach((line) => {
+      doc.text(line, 20, textY);
+      textY += 6;
+    });
+    
+    doc.save(`Warning_Letter_${s.staff_id}_${format(new Date(monthDate), "yyyy-MM")}.pdf`);
+  };
+
   const getStaffName = (profileId: string) => staff.find((s) => s.id === profileId)?.name ?? "Unknown";
   const getStaffId = (profileId: string) => staff.find((s) => s.id === profileId)?.staff_id ?? "—";
   const fmt = (n: number) => `RM ${Number(n).toFixed(2)}`;
@@ -382,6 +438,8 @@ const PayrollProcessing = () => {
                 <TableHead>EL</TableHead>
                 <TableHead>UPL</TableHead>
                 <TableHead>MIA</TableHead>
+                <TableHead>Late</TableHead>
+                <TableHead>Late Ded.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -405,6 +463,29 @@ const PayrollProcessing = () => {
                       <span className="text-muted-foreground">0</span>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {summary.lateCount > 0 ? (
+                      <div>
+                        <span className="text-destructive font-medium">{summary.lateCount}x</span>
+                        <span className="text-xs text-muted-foreground ml-1">({summary.lateMinutes}min)</span>
+                        {summary.lateCount > 3 && (
+                          <div className="mt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-6"
+                              onClick={() => generateWarningLetter(profileId, summary.lateCount)}
+                            >
+                              ⚠️ Warning Letter
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{fmt(summary.lateDeduction)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
@@ -427,6 +508,7 @@ const PayrollProcessing = () => {
               <TableHead>EIS</TableHead>
               <TableHead>PCB</TableHead>
               <TableHead>UPL</TableHead>
+              <TableHead>Late</TableHead>
               <TableHead>Net Pay</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-24">Actions</TableHead>
@@ -434,9 +516,9 @@ const PayrollProcessing = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : payrollRuns.length === 0 ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
             ) : (
               payrollRuns.map((run: any) => (
                 <TableRow key={run.id}>
@@ -456,6 +538,7 @@ const PayrollProcessing = () => {
                   <TableCell className="text-sm">{fmt(run.eis_employee)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.pcb)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.upl_deduction)}</TableCell>
+                  <TableCell className="text-sm">{fmt(run.late_deduction ?? 0)}</TableCell>
                   <TableCell className="text-sm font-bold">{fmt(run.net_pay)}</TableCell>
                   <TableCell>
                     <Badge variant={run.status === "released" ? "default" : "secondary"}>
