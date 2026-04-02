@@ -63,6 +63,8 @@ const Branches = () => {
         latitude: lat,
         longitude: lng,
         radius_meters: radius,
+        grace_period_minutes: parseInt(values.grace_period_minutes) || 10,
+        scheduled_start: values.scheduled_start || "09:30",
       };
 
       if (editingBranch) {
