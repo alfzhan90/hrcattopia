@@ -306,6 +306,9 @@ const Branches = () => {
                     {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}
                   </TableCell>
                   <TableCell>{branch.radius_meters}m</TableCell>
+                  <TableCell className="text-sm">
+                    {(branch as any).scheduled_start ?? "09:30"} / {(branch as any).grace_period_minutes ?? 10}min
+                  </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button size="icon" variant="ghost" onClick={() => openEdit(branch)}>

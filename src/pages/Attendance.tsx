@@ -173,12 +173,28 @@ const Attendance = () => {
 
       const status = dist <= branch.radius_meters ? "on_time" : "out_of_range";
 
+      // Calculate lateness
+      let lateMinutes = 0;
+      const now = new Date();
+      const [schedH, schedM] = (branch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
+      const scheduledTime = new Date(now);
+      scheduledTime.setHours(schedH, schedM, 0, 0);
+      const graceMs = ((branch as any).grace_period_minutes ?? 10) * 60 * 1000;
+      const deadline = new Date(scheduledTime.getTime() + graceMs);
+      
+      if (now > deadline) {
+        lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
+      }
+
+      const finalStatus = lateMinutes > 0 ? "late" : status;
+
       const { error } = await supabase.from("attendance_logs").insert({
         user_id: user!.id,
         branch_id: branch.id,
         check_in_lat: pos.coords.latitude,
         check_in_long: pos.coords.longitude,
-        status,
+        status: finalStatus as any,
+        late_minutes: lateMinutes,
       });
       if (error) throw error;
     },
