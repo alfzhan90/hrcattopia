@@ -62,13 +62,11 @@ const PayrollProcessing = () => {
   const { data: holidays = [] } = useQuery({
     queryKey: ["holidays-payroll", selectedMonth],
     queryFn: async () => {
-      const start = startOfMonth(new Date(monthDate));
-      const end = endOfMonth(new Date(monthDate));
       const { data, error } = await supabase
         .from("public_holidays")
         .select("*")
-        .gte("date", format(start, "yyyy-MM-dd"))
-        .lte("date", format(end, "yyyy-MM-dd"));
+        .gte("date", format(payPeriod.start, "yyyy-MM-dd"))
+        .lte("date", format(payPeriod.end, "yyyy-MM-dd"));
       if (error) throw error;
       return data;
     },
