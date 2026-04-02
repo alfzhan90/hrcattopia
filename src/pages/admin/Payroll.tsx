@@ -4,6 +4,7 @@ import AttendanceCorrection from "@/components/payroll/AttendanceCorrection";
 import LeaveManagement from "@/components/payroll/LeaveManagement";
 import HolidayCalendar from "@/components/payroll/HolidayCalendar";
 import PayrollProcessing from "@/components/payroll/PayrollProcessing";
+import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
