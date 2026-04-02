@@ -508,6 +508,7 @@ const PayrollProcessing = () => {
               <TableHead>EIS</TableHead>
               <TableHead>PCB</TableHead>
               <TableHead>UPL</TableHead>
+              <TableHead>Late</TableHead>
               <TableHead>Net Pay</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-24">Actions</TableHead>
