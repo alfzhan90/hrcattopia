@@ -24,13 +24,6 @@ const Login = () => {
     return <Navigate to="/attendance" replace />;
   }
 
-  if (user && role === "admin") {
-    return <Navigate to="/admin/branches" replace />;
-  }
-
-  if (user && role === "staff") {
-    return <Navigate to="/attendance" replace />;
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
