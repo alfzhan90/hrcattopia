@@ -307,7 +307,10 @@ const Management = () => {
                     <div className="flex items-center gap-3">
                       <div className="h-2 w-2 rounded-full bg-green-500" />
                       <div>
-                        <p className="font-medium text-sm">{s?.name ?? "Unknown"}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-sm">{s?.name ?? "Unknown"}</p>
+                          {s?.employment_type === "Area-Manager" && <Car className="h-3 w-3 text-amber-500" />}
+                        </div>
                         <p className="text-xs text-muted-foreground font-mono">{s?.staff_id}</p>
                       </div>
                     </div>
@@ -325,6 +328,35 @@ const Management = () => {
           </div>
         </div>
       </div>
+
+      {/* Area Manager Travel Summary */}
+      {todayVisits.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3 flex items-center gap-2">
+            <Car className="h-5 w-5 text-amber-500" /> Area Manager Visits Today
+          </h2>
+          <div className="rounded-lg border">
+            <div className="divide-y max-h-[300px] overflow-auto">
+              {todayVisits.map((v: any) => (
+                <div key={v.id} className="flex items-center justify-between p-3">
+                  <div>
+                    <p className="font-medium text-sm">{v.staff_profiles?.name ?? "Unknown"}</p>
+                    <p className="text-xs text-muted-foreground">→ {v.branches?.name ?? "Unknown"}</p>
+                  </div>
+                  <div className="text-right">
+                    {Number(v.distance_from_previous_km) > 0 && (
+                      <p className="text-xs font-medium">{Number(v.distance_from_previous_km).toFixed(1)} km</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(v.visited_at).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
