@@ -370,7 +370,7 @@ const PayrollProcessing = () => {
     const body = [
       `Dear ${s.name},`,
       "",
-      `This letter serves as a formal warning regarding your attendance record for ${monthLabel}.`,
+      `This letter serves as a formal warning regarding your attendance record for ${wMonthLabel}.`,
       `Our records indicate that you have been late on ${lateCount} occasion(s) this month,`,
       `exceeding the company's allowable threshold of 3 late arrivals per month.`,
       "",
