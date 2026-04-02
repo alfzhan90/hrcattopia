@@ -107,7 +107,26 @@ const PayrollProcessing = () => {
       for (const s of staff) {
         const staffLogs = (allLogs ?? []).filter((l) => l.user_id === s.user_id);
         const staffLeave = (leaveRecords ?? []).filter((lr: any) => lr.staff_profile_id === s.id);
-        const uplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
+        
+        // Count days by type
+        const attendanceDates = new Set(
+          staffLogs.map((l) => format(new Date(l.check_in_time), "yyyy-MM-dd"))
+        );
+        const alDays = staffLeave.filter((lr: any) => lr.leave_type === "AL").length;
+        const mcDays = staffLeave.filter((lr: any) => lr.leave_type === "MC").length;
+        const elDays = staffLeave.filter((lr: any) => lr.leave_type === "EL").length;
+        const explicitUplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
+        const leaveDates = new Set(staffLeave.map((lr: any) => lr.date));
+        
+        // MIA: working days with no attendance AND no approved leave
+        const miaDays = workingDays.filter((d) => {
+          const dateStr = format(d, "yyyy-MM-dd");
+          return !attendanceDates.has(dateStr) && !leaveDates.has(dateStr);
+        }).length;
+        
+        // Total UPL = explicit UPL + MIA days
+        const totalUplDays = explicitUplDays + miaDays;
+        const daysWorked = attendanceDates.size;
 
         const basicPay = Number(s.base_rate);
         const hourlyRate = calcHourlyRate(basicPay);
