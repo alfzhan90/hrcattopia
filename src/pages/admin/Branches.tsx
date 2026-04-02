@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,24 +11,27 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, MapPin } from "lucide-react";
+import { usePersistentForm } from "@/hooks/use-persistent-form";
+import { Plus, Pencil, Trash2, MapPin, Save } from "lucide-react";
 import BranchMap from "@/components/BranchMap";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Branch = Tables<"branches">;
+
+const defaultBranchForm = {
+  name: "",
+  address: "",
+  latitude: "",
+  longitude: "",
+  radius_meters: "100",
+};
 
 const Branches = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    address: "",
-    latitude: "",
-    longitude: "",
-    radius_meters: "100",
-  });
+  const { form, setForm, hasDraft, clearDraft } = usePersistentForm("branch_form", defaultBranchForm);
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ["branches"],
@@ -105,7 +108,7 @@ const Branches = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setEditingBranch(null);
-    setForm({ name: "", address: "", latitude: "", longitude: "", radius_meters: "100" });
+    clearDraft();
   };
 
   const openEdit = (branch: Branch) => {
@@ -209,7 +212,13 @@ const Branches = () => {
                 <MapPin className="inline h-3 w-3 mr-1" />
                 Tip: Click on the map to set coordinates automatically.
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex items-center gap-2 justify-end">
+                {hasDraft && !editingBranch && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 mr-auto">
+                    <Save className="h-3 w-3" />
+                    Draft saved
+                  </span>
+                )}
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>
@@ -224,7 +233,15 @@ const Branches = () => {
 
       {/* Map */}
       <div className="rounded-lg border overflow-hidden" style={{ height: 400 }}>
-        <BranchMap branches={branches} onMapClick={handleMapClick} />
+        <BranchMap
+          branches={branches}
+          onMapClick={handleMapClick}
+          pendingLocation={
+            form.latitude && form.longitude && !editingBranch
+              ? { lat: parseFloat(form.latitude), lng: parseFloat(form.longitude) }
+              : null
+          }
+        />
       </div>
 
       {/* Table */}

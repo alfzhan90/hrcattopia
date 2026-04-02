@@ -7,6 +7,7 @@ type Branch = Tables<"branches">;
 interface BranchMapProps {
   branches: Branch[];
   onMapClick: (lat: number, lng: number) => void;
+  pendingLocation?: { lat: number; lng: number } | null;
 }
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
@@ -15,7 +16,7 @@ const defaultCenter = { lat: 3.1390, lng: 101.6869 }; // KL, Malaysia
 
 const mapContainerStyle = { width: "100%", height: "100%" };
 
-const BranchMap = ({ branches, onMapClick }: BranchMapProps) => {
+const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
   });
@@ -84,6 +85,15 @@ const BranchMap = ({ branches, onMapClick }: BranchMapProps) => {
           />
         </div>
       ))}
+      {pendingLocation && (
+        <Marker
+          position={pendingLocation}
+          title="Selected location (unsaved)"
+          icon={{
+            url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+          }}
+        />
+      )}
     </GoogleMap>
   );
 };
