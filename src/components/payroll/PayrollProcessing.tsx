@@ -202,7 +202,14 @@ const PayrollProcessing = () => {
           upl_deduction: uplDeduction,
           net_pay: netPay,
           status: "draft" as const,
+          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays },
         });
+      }
+
+      // Store summary
+      const summaryMap: typeof monthlySummary = {};
+      for (const run of runs) {
+        summaryMap[run.staff_profile_id] = (run as any)._summary;
       }
 
       // Upsert
