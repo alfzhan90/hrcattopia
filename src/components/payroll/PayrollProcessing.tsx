@@ -9,10 +9,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
-import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
+import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { jsPDF } from "jspdf";
-import { format, startOfMonth, endOfMonth, startOfWeek, eachDayOfInterval, isWeekend, isSameWeek } from "date-fns";
+import { format, startOfWeek, eachDayOfInterval, isWeekend } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -26,6 +26,7 @@ const PayrollProcessing = () => {
   const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number; lateCount: number; lateMinutes: number; lateDeduction: number }>>({});
 
   const monthDate = `${selectedMonth}-01`;
+  const payPeriod = getPayPeriod(selectedMonth);
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-payroll"],
@@ -61,13 +62,11 @@ const PayrollProcessing = () => {
   const { data: holidays = [] } = useQuery({
     queryKey: ["holidays-payroll", selectedMonth],
     queryFn: async () => {
-      const start = startOfMonth(new Date(monthDate));
-      const end = endOfMonth(new Date(monthDate));
       const { data, error } = await supabase
         .from("public_holidays")
         .select("*")
-        .gte("date", format(start, "yyyy-MM-dd"))
-        .lte("date", format(end, "yyyy-MM-dd"));
+        .gte("date", format(payPeriod.start, "yyyy-MM-dd"))
+        .lte("date", format(payPeriod.end, "yyyy-MM-dd"));
       if (error) throw error;
       return data;
     },
@@ -75,18 +74,17 @@ const PayrollProcessing = () => {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const start = startOfMonth(new Date(monthDate));
-      const end = endOfMonth(new Date(monthDate));
+      const { start, end } = payPeriod;
 
-      // Get attendance logs for the month
+      // Get attendance logs for the pay period (24th prev month – 23rd current month)
       const { data: allLogs, error: logError } = await supabase
         .from("attendance_logs")
         .select("*")
         .gte("check_in_time", format(start, "yyyy-MM-dd"))
-        .lte("check_in_time", format(end, "yyyy-MM-dd"));
+        .lte("check_in_time", format(end, "yyyy-MM-dd'T'23:59:59"));
       if (logError) throw logError;
 
-      // Get APPROVED leave records only
+      // Get APPROVED leave records only within pay period
       const { data: leaveRecords, error: leaveError } = await supabase
         .from("leave_records")
         .select("*")
@@ -97,7 +95,7 @@ const PayrollProcessing = () => {
 
       const holidayDates = new Map(holidays.map((h: any) => [h.date, h.multiplier]));
 
-      // Calculate working days in the month (exclude weekends & public holidays)
+      // Calculate working days in pay period (exclude weekends & public holidays)
       const allDays = eachDayOfInterval({ start, end });
       const workingDays = allDays.filter(
         (d) => !isWeekend(d) && !holidayDates.has(format(d, "yyyy-MM-dd"))
@@ -313,9 +311,11 @@ const PayrollProcessing = () => {
     if (!s) return;
     const branch = branches.find((b: any) => b.id === s.branch_id);
 
+    const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
       companyName: "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
+      periodLabel: period.label,
       staffId: s.staff_id,
       staffName: s.name,
       icNumber: s.ic_number,
@@ -423,6 +423,9 @@ const PayrollProcessing = () => {
             </Button>
           )}
         </div>
+      </div>
+      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}
       </div>
 
       {/* Monthly Attendance Summary */}

@@ -8,13 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock, Filter } from "lucide-react";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getPayPeriod } from "@/lib/payroll";
 
 const StaffLogs = () => {
   const { user } = useAuth();
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+  const currentPeriod = getPayPeriod(format(new Date(), "yyyy-MM"));
+  const [startDate, setStartDate] = useState<Date>(currentPeriod.start);
+  const [endDate, setEndDate] = useState<Date>(currentPeriod.end);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["my-logs", user?.id, startDate.toISOString(), endDate.toISOString()],
@@ -47,6 +49,7 @@ const StaffLogs = () => {
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 pb-24 space-y-4">
       <h1 className="text-xl font-bold">My Attendance Logs</h1>
+      <p className="text-xs text-muted-foreground">Pay cycle: 24th prev month – 23rd current month</p>
 
       {/* Date Range Filter */}
       <Card>

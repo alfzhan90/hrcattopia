@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download } from "lucide-react";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
+import { getPayPeriod } from "@/lib/payroll";
 import { format } from "date-fns";
 
 const StaffPayslips = () => {
@@ -44,8 +45,10 @@ const StaffPayslips = () => {
 
   const downloadPayslip = async (run: any) => {
     if (!profile) return;
+    const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
       companyName: "CATTOPIA SDN BHD",
+      periodLabel: period.label,
       month: format(new Date(run.month), "MMMM yyyy"),
       staffId: profile.staff_id, staffName: profile.name, icNumber: profile.ic_number,
       kwspNumber: profile.kwsp_number ?? "", socsoNumber: profile.socso_number ?? "",
@@ -83,7 +86,9 @@ const StaffPayslips = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{format(new Date(p.month), "MMMM yyyy")}</p>
-                  <p className="text-xs text-muted-foreground">Gross: RM {Number(p.gross_pay).toFixed(2)}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {getPayPeriod(format(new Date(p.month), "yyyy-MM")).label}
+                  </p>
                 </div>
                 <p className="font-bold text-sm">RM {Number(p.net_pay).toFixed(2)}</p>
               </CardContent>

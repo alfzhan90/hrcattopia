@@ -4,6 +4,7 @@
 export interface PayslipData {
   companyName: string;
   month: string; // e.g. "January 2026"
+  periodLabel?: string; // e.g. "24/03/2026 – 23/04/2026"
   staffId: string;
   staffName: string;
   icNumber: string;
@@ -51,6 +52,12 @@ export const generatePayslipPdf = async (data: PayslipData): Promise<Blob> => {
   doc.text("PAYSLIP", pw / 2, y, { align: "center" });
   y += 5;
   doc.text(data.month, pw / 2, y, { align: "center" });
+  if (data.periodLabel) {
+    y += 5;
+    doc.setFontSize(9);
+    doc.text(`Period: ${data.periodLabel}`, pw / 2, y, { align: "center" });
+    doc.setFontSize(11);
+  }
   y += 8;
 
   // Line
