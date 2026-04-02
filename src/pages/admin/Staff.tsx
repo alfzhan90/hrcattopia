@@ -220,7 +220,13 @@ const Staff = () => {
                   <Input type="number" step="0.01" value={form.ot_rate_per_hour} onChange={(e) => setForm({ ...form, ot_rate_per_hour: e.target.value })} />
                 </div>
               </div>
-              <div className="flex gap-2 justify-end">
+              <div className="flex items-center gap-2 justify-end">
+                {hasDraft && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 mr-auto">
+                    <Save className="h-3 w-3" />
+                    Draft saved
+                  </span>
+                )}
                 <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Creating..." : "Create Staff"}
