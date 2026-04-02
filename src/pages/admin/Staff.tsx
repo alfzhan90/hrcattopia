@@ -87,7 +87,7 @@ const Staff = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       toast({ title: "Staff member created" });
-      closeDialog();
+      closeDialog(true);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
