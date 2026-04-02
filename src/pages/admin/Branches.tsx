@@ -105,10 +105,10 @@ const Branches = () => {
     },
   });
 
-  const closeDialog = () => {
+  const closeDialog = (clearForm = false) => {
     setDialogOpen(false);
     setEditingBranch(null);
-    clearDraft();
+    if (clearForm) clearDraft();
   };
 
   const openEdit = (branch: Branch) => {
