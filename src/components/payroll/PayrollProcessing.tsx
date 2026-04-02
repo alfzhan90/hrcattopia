@@ -21,6 +21,7 @@ type StaffProfile = Tables<"staff_profiles">;
 const PayrollProcessing = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: companySettings } = useCompanySettings();
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [editOpen, setEditOpen] = useState(false);
   const [editRun, setEditRun] = useState<any>(null);
