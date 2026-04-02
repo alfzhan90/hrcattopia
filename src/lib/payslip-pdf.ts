@@ -18,6 +18,7 @@ export interface PayslipData {
   allowance: number;
   commission: number;
   holidayPay: number;
+  mileageClaim?: number;
   grossPay: number;
   // Deductions
   epfEmployee: number;
@@ -106,13 +107,16 @@ export const generatePayslipPdf = async (data: PayslipData): Promise<Blob> => {
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
 
-  const earnings = [
+  const earnings: [string, number][] = [
     ["Basic Pay", data.basicPay],
     ["Overtime Pay", data.otPay],
     ["Allowance", data.allowance],
     ["Commission", data.commission],
     ["Holiday Pay", data.holidayPay],
-  ] as const;
+  ];
+  if (data.mileageClaim && data.mileageClaim > 0) {
+    earnings.push(["Mileage Claim", data.mileageClaim]);
+  }
 
   const deductions = [
     ["EPF (Employee 11%)", data.epfEmployee],

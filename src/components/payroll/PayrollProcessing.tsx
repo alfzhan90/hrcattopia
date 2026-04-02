@@ -178,7 +178,23 @@ const PayrollProcessing = () => {
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
         const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
-        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction - lateDeduction) * 100) / 100;
+
+        // Mileage claim for Area Managers (RM0.80/km)
+        let mileageClaim = 0;
+        if (s.employment_type === "Area-Manager") {
+          const { data: visits } = await supabase
+            .from("branch_visits")
+            .select("distance_from_previous_km")
+            .eq("staff_profile_id", s.id)
+            .gte("visited_at", format(start, "yyyy-MM-dd"))
+            .lte("visited_at", format(end, "yyyy-MM-dd'T'23:59:59"));
+          if (visits) {
+            const totalKm = visits.reduce((sum: number, v: any) => sum + Number(v.distance_from_previous_km), 0);
+            mileageClaim = Math.round(totalKm * 0.80 * 100) / 100;
+          }
+        }
+
+        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
@@ -194,6 +210,7 @@ const PayrollProcessing = () => {
           allowance: 0,
           commission: 0,
           holiday_pay: holidayPay,
+          mileage_claim: mileageClaim,
           gross_pay: grossPay,
           epf_employee: epfEmployee,
           epf_employer: epfEmployer,
@@ -507,6 +524,7 @@ const PayrollProcessing = () => {
               <TableHead>OT</TableHead>
               <TableHead>Allowance</TableHead>
               <TableHead>Holiday</TableHead>
+              <TableHead>Mileage</TableHead>
               <TableHead>Gross</TableHead>
               <TableHead>EPF</TableHead>
               <TableHead>SOCSO</TableHead>
@@ -520,10 +538,10 @@ const PayrollProcessing = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+             {isLoading ? (
+              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : payrollRuns.length === 0 ? (
-              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
             ) : (
               payrollRuns.map((run: any) => (
                 <TableRow key={run.id}>
@@ -537,6 +555,7 @@ const PayrollProcessing = () => {
                   <TableCell className="text-sm">{fmt(run.ot_pay)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.allowance)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.holiday_pay)}</TableCell>
+                  <TableCell className="text-sm">{Number(run.mileage_claim) > 0 ? fmt(run.mileage_claim) : "—"}</TableCell>
                   <TableCell className="text-sm font-medium">{fmt(run.gross_pay)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.epf_employee)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.socso_employee)}</TableCell>

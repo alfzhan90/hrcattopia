@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
 import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
+import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -37,6 +39,8 @@ const StaffHome = () => {
     enabled: !!user,
   });
 
+  const isAreaManager = profile?.employment_type === "Area-Manager";
+
   const { data: branch } = useQuery({
     queryKey: ["my-branch", profile?.branch_id],
     queryFn: async () => {
@@ -44,8 +48,24 @@ const StaffHome = () => {
       if (error) throw error;
       return data as Branch;
     },
-    enabled: !!profile?.branch_id,
+    enabled: !!profile?.branch_id && !isAreaManager,
   });
+
+  // Area Manager: fetch all branches
+  const { data: allBranches = [] } = useQuery({
+    queryKey: ["all-branches-am"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").order("name");
+      if (error) throw error;
+      return data as Branch[];
+    },
+    enabled: isAreaManager,
+  });
+
+  const [selectedBranchId, setSelectedBranchId] = useState("");
+  const activeBranch = isAreaManager
+    ? allBranches.find((b) => b.id === selectedBranchId) ?? null
+    : branch ?? null;
 
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
@@ -103,7 +123,7 @@ const StaffHome = () => {
   });
 
   // Smart notifications
-  useSmartNotifications(user?.id, branch, activeLog?.check_in_time ?? null, !!activeLog);
+  useSmartNotifications(user?.id, activeBranch, activeLog?.check_in_time ?? null, !!activeLog);
 
   // Device binding
   useEffect(() => { setResolvedDeviceId(profile?.device_id ?? null); }, [profile?.device_id]);
@@ -130,11 +150,11 @@ const StaffHome = () => {
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (branch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude));
+        if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
       }, () => {}, { enableHighAccuracy: true }
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [branch]);
+  }, [activeBranch]);
 
   // Live timer
   useEffect(() => {
@@ -154,7 +174,8 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      if (!profile || !branch) throw new Error("No branch assigned.");
+      const checkBranch = isAreaManager ? activeBranch : branch;
+      if (!profile || !checkBranch) throw new Error(isAreaManager ? "Select a branch first." : "No branch assigned.");
 
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
@@ -168,23 +189,23 @@ const StaffHome = () => {
       }
 
       const pos = await getCurrentPosition();
-      const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude);
-      if (dist > branch.radius_meters) {
-        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${branch.name}.`);
+      const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
+      if (dist > checkBranch.radius_meters) {
+        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
         throw new Error("Out of range");
       }
 
       let lateMinutes = 0;
       const now = new Date();
-      const [schedH, schedM] = (branch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
+      const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
       const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
-      const graceMs = ((branch as any).grace_period_minutes ?? 10) * 60 * 1000;
+      const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
       if (now > new Date(scheduledTime.getTime() + graceMs)) {
         lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
       }
 
       const { error } = await supabase.from("attendance_logs").insert({
-        user_id: user!.id, branch_id: branch.id,
+        user_id: user!.id, branch_id: checkBranch.id,
         check_in_lat: pos.coords.latitude, check_in_long: pos.coords.longitude,
         status: (lateMinutes > 0 ? "late" : "on_time") as any, late_minutes: lateMinutes,
       });
@@ -232,7 +253,7 @@ const StaffHome = () => {
     return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>;
   }
 
-  const inRange = distance !== null && branch ? distance <= branch.radius_meters : null;
+  const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
@@ -241,7 +262,10 @@ const StaffHome = () => {
         <div>
           <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, d MMMM yyyy")}</p>
           <h1 className="text-xl font-bold">Welcome, {profile.name.split(" ")[0]}</h1>
-          <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
+            {isAreaManager && <Badge variant="secondary" className="text-[10px]">Area Manager</Badge>}
+          </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
           <LogOut className="h-5 w-5" />
@@ -255,6 +279,25 @@ const StaffHome = () => {
             ⚠️ You missed a Clock Out on {format(new Date(missedClockOut.check_in_time), "dd MMM yyyy")}. Please contact Admin to rectify your hours.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Area Manager Branch Selector */}
+      {isAreaManager && !activeLog && (
+        <Card className="rounded-xl">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium">Select Branch to Check In</p>
+            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose any branch..." />
+              </SelectTrigger>
+              <SelectContent>
+                {allBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
       )}
 
       {/* Attendance Card */}
@@ -300,7 +343,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending}
+              disabled={!!activeLog || checkInMutation.isPending || (isAreaManager && !selectedBranchId)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
@@ -318,6 +361,11 @@ const StaffHome = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Branch Visit Logger for Area Managers */}
+      {isAreaManager && profile && (
+        <BranchVisitLogger profileId={profile.id} />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -345,6 +393,11 @@ const StaffHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Privacy Disclaimer */}
+      <p className="text-[10px] text-muted-foreground text-center px-4 pb-4">
+        📍 Location is tracked for travel claims and safety during working hours only. GPS tracking occurs only when you tap Clock In or Log Visit.
+      </p>
     </div>
   );
 };
