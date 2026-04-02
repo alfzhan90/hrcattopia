@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -11,24 +11,27 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Pencil, Trash2, MapPin } from "lucide-react";
+import { usePersistentForm } from "@/hooks/use-persistent-form";
+import { Plus, Pencil, Trash2, MapPin, Save } from "lucide-react";
 import BranchMap from "@/components/BranchMap";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Branch = Tables<"branches">;
+
+const defaultBranchForm = {
+  name: "",
+  address: "",
+  latitude: "",
+  longitude: "",
+  radius_meters: "100",
+};
 
 const Branches = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
-  const [form, setForm] = useState({
-    name: "",
-    address: "",
-    latitude: "",
-    longitude: "",
-    radius_meters: "100",
-  });
+  const { form, setForm, hasDraft, clearDraft } = usePersistentForm("branch_form", defaultBranchForm);
 
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ["branches"],
