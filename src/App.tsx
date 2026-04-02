@@ -10,7 +10,9 @@ import Login from "@/pages/Login";
 import Branches from "@/pages/admin/Branches";
 import Staff from "@/pages/admin/Staff";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
+import Payroll from "@/pages/admin/Payroll";
 import Attendance from "@/pages/Attendance";
+import StaffDashboard from "@/pages/StaffDashboard";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -19,7 +21,7 @@ const queryClient = new QueryClient({
     queries: {
       refetchOnWindowFocus: false,
       refetchOnReconnect: false,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
@@ -38,7 +40,7 @@ const HomeRedirect = () => {
   if (!user) return <Navigate to="/login" replace />;
   if (!role) return <Navigate to="/login" replace />;
   if (role === "admin") return <Navigate to="/admin/branches" replace />;
-  return <Navigate to="/attendance" replace />;
+  return <Navigate to="/staff/dashboard" replace />;
 };
 
 const AppRoutes = () => (
@@ -55,6 +57,14 @@ const AppRoutes = () => (
       }
     />
     <Route
+      path="/staff/dashboard"
+      element={
+        <ProtectedRoute>
+          <StaffDashboard />
+        </ProtectedRoute>
+      }
+    />
+    <Route
       path="/admin"
       element={
         <ProtectedRoute requiredRole="admin">
@@ -65,6 +75,7 @@ const AppRoutes = () => (
       <Route path="branches" element={<Branches />} />
       <Route path="staff" element={<Staff />} />
       <Route path="attendance" element={<LiveAttendance />} />
+      <Route path="payroll" element={<Payroll />} />
     </Route>
     <Route path="*" element={<NotFound />} />
   </Routes>

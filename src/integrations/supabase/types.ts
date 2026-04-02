@@ -97,6 +97,148 @@ export type Database = {
         }
         Relationships: []
       }
+      leave_records: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          id: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          notes: string | null
+          staff_profile_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          id?: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          notes?: string | null
+          staff_profile_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          id?: string
+          leave_type?: Database["public"]["Enums"]["leave_type"]
+          notes?: string | null
+          staff_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_records_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_runs: {
+        Row: {
+          allowance: number
+          basic_pay: number
+          commission: number
+          created_at: string
+          eis_employee: number
+          eis_employer: number
+          epf_employee: number
+          epf_employer: number
+          gross_pay: number
+          holiday_pay: number
+          id: string
+          month: string
+          net_pay: number
+          ot_pay: number
+          pcb: number
+          released_at: string | null
+          socso_employee: number
+          socso_employer: number
+          staff_profile_id: string
+          status: Database["public"]["Enums"]["payroll_status"]
+          upl_deduction: number
+        }
+        Insert: {
+          allowance?: number
+          basic_pay?: number
+          commission?: number
+          created_at?: string
+          eis_employee?: number
+          eis_employer?: number
+          epf_employee?: number
+          epf_employer?: number
+          gross_pay?: number
+          holiday_pay?: number
+          id?: string
+          month: string
+          net_pay?: number
+          ot_pay?: number
+          pcb?: number
+          released_at?: string | null
+          socso_employee?: number
+          socso_employer?: number
+          staff_profile_id: string
+          status?: Database["public"]["Enums"]["payroll_status"]
+          upl_deduction?: number
+        }
+        Update: {
+          allowance?: number
+          basic_pay?: number
+          commission?: number
+          created_at?: string
+          eis_employee?: number
+          eis_employer?: number
+          epf_employee?: number
+          epf_employer?: number
+          gross_pay?: number
+          holiday_pay?: number
+          id?: string
+          month?: string
+          net_pay?: number
+          ot_pay?: number
+          pcb?: number
+          released_at?: string | null
+          socso_employee?: number
+          socso_employer?: number
+          staff_profile_id?: string
+          status?: Database["public"]["Enums"]["payroll_status"]
+          upl_deduction?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      public_holidays: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          multiplier: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          multiplier?: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          multiplier?: number
+          name?: string
+        }
+        Relationships: []
+      }
       staff_profiles: {
         Row: {
           al_balance: number
@@ -197,6 +339,8 @@ export type Database = {
       app_role: "admin" | "staff"
       attendance_status: "on_time" | "late" | "out_of_range"
       employment_type: "Monthly-FT" | "Hourly-FT"
+      leave_type: "AL" | "MC" | "UPL"
+      payroll_status: "draft" | "released"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -327,6 +471,8 @@ export const Constants = {
       app_role: ["admin", "staff"],
       attendance_status: ["on_time", "late", "out_of_range"],
       employment_type: ["Monthly-FT", "Hourly-FT"],
+      leave_type: ["AL", "MC", "UPL"],
+      payroll_status: ["draft", "released"],
     },
   },
 } as const
