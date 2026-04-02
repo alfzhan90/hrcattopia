@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock } from "lucide-react";
@@ -24,10 +24,10 @@ const Attendance = () => {
   const [deviceError, setDeviceError] = useState<string | null>(null);
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+  const [resolvedDeviceId, setResolvedDeviceId] = useState<string | null>(null);
 
   const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY });
 
-  // Fetch staff profile
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
     queryFn: async () => {
@@ -42,7 +42,6 @@ const Attendance = () => {
     enabled: !!user,
   });
 
-  // Fetch assigned branch
   const { data: branch } = useQuery({
     queryKey: ["my-branch", profile?.branch_id],
     queryFn: async () => {
@@ -57,7 +56,6 @@ const Attendance = () => {
     enabled: !!profile?.branch_id,
   });
 
-  // Fetch today's active attendance
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
@@ -75,7 +73,51 @@ const Attendance = () => {
     enabled: !!user,
   });
 
-  // Watch position
+  useEffect(() => {
+    setResolvedDeviceId(profile?.device_id ?? null);
+  }, [profile?.device_id]);
+
+  const bindDeviceMutation = useMutation({
+    mutationFn: async () => {
+      if (!user) throw new Error("You must be signed in to register this device.");
+      if (!profile) throw new Error("Staff profile not found.");
+      if (profile.user_id !== user.id) throw new Error("This staff profile is linked to a different account.");
+
+      const fingerprint = generateDeviceFingerprint();
+      const { error } = await supabase
+        .from("staff_profiles")
+        .update({ device_id: fingerprint })
+        .eq("id", profile.id)
+        .eq("user_id", user.id);
+
+      if (error) throw new Error(`Unable to save this device: ${error.message}`);
+      return fingerprint;
+    },
+    onSuccess: (fingerprint) => {
+      setResolvedDeviceId(fingerprint);
+      setDeviceError(null);
+      queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
+    },
+    onError: (err: Error) => {
+      setDeviceError(err.message);
+      toast({
+        title: "Device binding failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const { mutate: bindDevice, isPending: isBindingDevice } = bindDeviceMutation;
+
+  useEffect(() => {
+    if (!user || !profile) return;
+    if (profile.user_id !== user.id) return;
+    if (profile.device_id || resolvedDeviceId || isBindingDevice) return;
+
+    bindDevice();
+  }, [bindDevice, isBindingDevice, profile, resolvedDeviceId, user]);
+
   useEffect(() => {
     if (!navigator.geolocation) return;
     const id = navigator.geolocation.watchPosition(
@@ -91,7 +133,6 @@ const Attendance = () => {
     return () => navigator.geolocation.clearWatch(id);
   }, [branch]);
 
-  // Check In mutation
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null);
@@ -100,19 +141,28 @@ const Attendance = () => {
       if (!profile) throw new Error("Staff profile not found.");
       if (!profile.branch_id || !branch) throw new Error("No branch assigned.");
 
-      // Device check
       const fingerprint = generateDeviceFingerprint();
-      if (profile.device_id && profile.device_id !== fingerprint) {
+      const currentDeviceId = resolvedDeviceId ?? profile.device_id;
+
+      if (currentDeviceId && currentDeviceId !== fingerprint) {
         setDeviceError("Security Error: This account is locked to another device. Please contact Admin.");
         throw new Error("Device mismatch");
       }
 
-      // Save device if first time
-      if (!profile.device_id) {
-        await supabase.from("staff_profiles").update({ device_id: fingerprint }).eq("id", profile.id);
+      if (!currentDeviceId) {
+        const { error: deviceSaveError } = await supabase
+          .from("staff_profiles")
+          .update({ device_id: fingerprint })
+          .eq("id", profile.id)
+          .eq("user_id", user!.id);
+
+        if (deviceSaveError) {
+          throw new Error(`Device binding failed: ${deviceSaveError.message}`);
+        }
+
+        setResolvedDeviceId(fingerprint);
       }
 
-      // GPS check
       const pos = await getCurrentPosition();
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude);
 
@@ -133,8 +183,8 @@ const Attendance = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["active-attendance"] });
-      queryClient.invalidateQueries({ queryKey: ["my-profile"] });
+      queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
+      queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
       toast({ title: "Checked In!", description: "Your attendance has been recorded." });
     },
     onError: (err: Error) => {
@@ -144,7 +194,6 @@ const Attendance = () => {
     },
   });
 
-  // Check Out mutation
   const checkOutMutation = useMutation({
     mutationFn: async () => {
       if (!activeLog) throw new Error("No active check-in found.");
@@ -166,7 +215,7 @@ const Attendance = () => {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["active-attendance"] });
+      queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
       toast({ title: "Checked Out!", description: "Have a great rest of the day." });
     },
     onError: (err: Error) => {
@@ -206,7 +255,6 @@ const Attendance = () => {
         {branch && <p className="text-xs text-muted-foreground mt-1">{branch.name}</p>}
       </div>
 
-      {/* Map */}
       {GOOGLE_MAPS_API_KEY && isLoaded && branch && (
         <div className="rounded-lg border overflow-hidden" style={{ height: 250 }}>
           <GoogleMap
@@ -245,7 +293,6 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Distance info */}
       {distance !== null && branch && (
         <div className={`text-center text-sm font-medium ${distance <= branch.radius_meters ? "text-green-600" : "text-destructive"}`}>
           <MapPin className="inline h-4 w-4 mr-1" />
@@ -254,7 +301,14 @@ const Attendance = () => {
         </div>
       )}
 
-      {/* Alerts */}
+      {isBindingDevice && (
+        <Card>
+          <CardContent className="pt-4 text-sm text-muted-foreground">
+            Securing this device for future attendance check-ins...
+          </CardContent>
+        </Card>
+      )}
+
       {geoError && (
         <Alert variant="destructive">
           <MapPin className="h-4 w-4" />
@@ -270,7 +324,6 @@ const Attendance = () => {
         </Alert>
       )}
 
-      {/* Active check-in info */}
       {activeLog && (
         <Card>
           <CardContent className="pt-4">
@@ -282,16 +335,15 @@ const Attendance = () => {
         </Card>
       )}
 
-      {/* Buttons */}
       <div className="grid grid-cols-2 gap-4 pt-4">
         <Button
           size="lg"
           className="h-20 text-lg"
-          disabled={!!activeLog || checkInMutation.isPending}
+          disabled={!!activeLog || checkInMutation.isPending || isBindingDevice}
           onClick={() => checkInMutation.mutate()}
         >
           <LogIn className="h-6 w-6 mr-2" />
-          {checkInMutation.isPending ? "Checking..." : "Check In"}
+          {checkInMutation.isPending ? "Checking..." : isBindingDevice ? "Securing..." : "Check In"}
         </Button>
         <Button
           size="lg"
