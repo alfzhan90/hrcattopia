@@ -214,6 +214,27 @@ const Branches = () => {
                   required
                 />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Work Start Time</Label>
+                  <Input
+                    type="time"
+                    value={form.scheduled_start}
+                    onChange={(e) => setForm({ ...form, scheduled_start: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Grace Period (minutes)</Label>
+                  <Input
+                    type="number"
+                    value={form.grace_period_minutes}
+                    onChange={(e) => setForm({ ...form, grace_period_minutes: e.target.value })}
+                    placeholder="10"
+                    required
+                  />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
                 <MapPin className="inline h-3 w-3 mr-1" />
                 Tip: Click on the map to set coordinates automatically.
