@@ -111,9 +111,9 @@ const Staff = () => {
     },
   });
 
-  const closeDialog = () => {
+  const closeDialog = (clearForm = false) => {
     setDialogOpen(false);
-    clearDraft();
+    if (clearForm) clearDraft();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
