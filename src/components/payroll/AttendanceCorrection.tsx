@@ -92,6 +92,21 @@ const AttendanceCorrection = () => {
     },
   });
 
+  const waiveMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      const { error } = await supabase
+        .from("attendance_logs")
+        .update({ late_waived: true })
+        .eq("id", logId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance-correction"] });
+      toast({ title: "Lateness waived" });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const openEdit = (log: any) => {
     setEditLog(log);
     setEditCheckIn(format(new Date(log.check_in_time), "yyyy-MM-dd'T'HH:mm"));
