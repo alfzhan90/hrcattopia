@@ -16,7 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -40,6 +40,20 @@ const Staff = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
   const { form, setForm, hasDraft, clearDraft } = usePersistentForm("staff_form", defaultStaffForm);
+
+  // Edit state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState<{
+    id: string;
+    name: string;
+    ic_number: string;
+    kwsp_number: string;
+    socso_number: string;
+    employment_type: string;
+    base_rate: string;
+    ot_rate_per_hour: string;
+    branch_id: string;
+  } | null>(null);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
@@ -95,6 +109,34 @@ const Staff = () => {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (values: NonNullable<typeof editForm>) => {
+      const { error } = await supabase
+        .from("staff_profiles")
+        .update({
+          name: values.name,
+          ic_number: values.ic_number,
+          kwsp_number: values.kwsp_number || null,
+          socso_number: values.socso_number || null,
+          employment_type: values.employment_type as any,
+          base_rate: parseFloat(values.base_rate) || 0,
+          ot_rate_per_hour: parseFloat(values.ot_rate_per_hour) || 0,
+          branch_id: values.branch_id || null,
+        })
+        .eq("id", values.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      toast({ title: "Staff updated", description: "Profile has been saved." });
+      setEditDialogOpen(false);
+      setEditForm(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const resetDeviceMutation = useMutation({
     mutationFn: async (staffId: string) => {
       const { error } = await supabase
@@ -122,6 +164,26 @@ const Staff = () => {
     createMutation.mutate(form);
   };
 
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (editForm) updateMutation.mutate(editForm);
+  };
+
+  const openEditDialog = (s: StaffProfile) => {
+    setEditForm({
+      id: s.id,
+      name: s.name,
+      ic_number: s.ic_number,
+      kwsp_number: s.kwsp_number || "",
+      socso_number: s.socso_number || "",
+      employment_type: s.employment_type,
+      base_rate: String(s.base_rate),
+      ot_rate_per_hour: String(s.ot_rate_per_hour),
+      branch_id: s.branch_id || "",
+    });
+    setEditDialogOpen(true);
+  };
+
   const filteredStaff = staff.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -133,6 +195,91 @@ const Staff = () => {
     if (!branchId) return "—";
     return branches.find((b) => b.id === branchId)?.name ?? "Unknown";
   };
+
+  const formatIcNumber = (value: string) => {
+    const raw = value.replace(/[^0-9]/g, "").slice(0, 12);
+    return raw.length > 8
+      ? `${raw.slice(0, 6)}-${raw.slice(6, 8)}-${raw.slice(8)}`
+      : raw.length > 6
+      ? `${raw.slice(0, 6)}-${raw.slice(6)}`
+      : raw;
+  };
+
+  const staffFormFields = (formData: any, setFormData: (v: any) => void, showEmail: boolean) => (
+    <>
+      {showEmail && (
+        <div className="space-y-2">
+          <Label>Email Address</Label>
+          <Input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="staff@example.com"
+            required
+          />
+          <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Full Name</Label>
+          <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required />
+        </div>
+        <div className="space-y-2">
+          <Label>IC Number</Label>
+          <Input
+            value={formData.ic_number}
+            onChange={(e) => setFormData({ ...formData, ic_number: formatIcNumber(e.target.value) })}
+            placeholder="######-##-####"
+            required
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>KWSP Number</Label>
+          <Input value={formData.kwsp_number} onChange={(e) => setFormData({ ...formData, kwsp_number: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label>SOCSO Number</Label>
+          <Input value={formData.socso_number} onChange={(e) => setFormData({ ...formData, socso_number: e.target.value })} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Employment Type</Label>
+          <Select value={formData.employment_type} onValueChange={(v) => setFormData({ ...formData, employment_type: v })}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Monthly-FT">Monthly Full-Time</SelectItem>
+              <SelectItem value="Hourly-FT">Hourly Full-Time</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label>Branch</Label>
+          <Select value={formData.branch_id} onValueChange={(v) => setFormData({ ...formData, branch_id: v })}>
+            <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+            <SelectContent>
+              {branches.map((b) => (
+                <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Base Rate (RM)</Label>
+          <Input type="number" step="0.01" value={formData.base_rate} onChange={(e) => setFormData({ ...formData, base_rate: e.target.value })} />
+        </div>
+        <div className="space-y-2">
+          <Label>OT Rate/Hour (RM)</Label>
+          <Input type="number" step="0.01" value={formData.ot_rate_per_hour} onChange={(e) => setFormData({ ...formData, ot_rate_per_hour: e.target.value })} />
+        </div>
+      </div>
+    </>
+  );
 
   return (
     <div className="p-6 space-y-6">
@@ -153,83 +300,7 @@ const Staff = () => {
               <DialogTitle>Add New Staff</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Email Address</Label>
-                <Input
-                  type="email"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="staff@example.com"
-                  required
-                />
-                <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Full Name</Label>
-                  <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
-                </div>
-                <div className="space-y-2">
-                  <Label>IC Number</Label>
-                  <Input
-                    value={form.ic_number}
-                    onChange={(e) => {
-                      const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 12);
-                      const formatted = raw.length > 8
-                        ? `${raw.slice(0, 6)}-${raw.slice(6, 8)}-${raw.slice(8)}`
-                        : raw.length > 6
-                        ? `${raw.slice(0, 6)}-${raw.slice(6)}`
-                        : raw;
-                      setForm({ ...form, ic_number: formatted });
-                    }}
-                    placeholder="######-##-####"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>KWSP Number</Label>
-                  <Input value={form.kwsp_number} onChange={(e) => setForm({ ...form, kwsp_number: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>SOCSO Number</Label>
-                  <Input value={form.socso_number} onChange={(e) => setForm({ ...form, socso_number: e.target.value })} />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Employment Type</Label>
-                  <Select value={form.employment_type} onValueChange={(v) => setForm({ ...form, employment_type: v as any })}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Monthly-FT">Monthly Full-Time</SelectItem>
-                      <SelectItem value="Hourly-FT">Hourly Full-Time</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Branch</Label>
-                  <Select value={form.branch_id} onValueChange={(v) => setForm({ ...form, branch_id: v })}>
-                    <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
-                    <SelectContent>
-                      {branches.map((b) => (
-                        <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Base Rate (RM)</Label>
-                  <Input type="number" step="0.01" value={form.base_rate} onChange={(e) => setForm({ ...form, base_rate: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>OT Rate/Hour (RM)</Label>
-                  <Input type="number" step="0.01" value={form.ot_rate_per_hour} onChange={(e) => setForm({ ...form, ot_rate_per_hour: e.target.value })} />
-                </div>
-              </div>
+              {staffFormFields(form, setForm, true)}
               <div className="flex items-center gap-2 justify-end">
                 {hasDraft && (
                   <span className="text-xs text-muted-foreground flex items-center gap-1 mr-auto">
@@ -246,6 +317,26 @@ const Staff = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={(open) => { if (!open) { setEditDialogOpen(false); setEditForm(null); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Edit Staff</DialogTitle>
+          </DialogHeader>
+          {editForm && (
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {staffFormFields(editForm, setEditForm, false)}
+              <div className="flex items-center gap-2 justify-end">
+                <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditForm(null); }}>Cancel</Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Search */}
       <div className="relative max-w-sm">
@@ -269,7 +360,7 @@ const Staff = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Device</TableHead>
-              <TableHead className="w-[100px]">Actions</TableHead>
+              <TableHead className="w-[120px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -304,17 +395,27 @@ const Staff = () => {
                     )}
                   </TableCell>
                   <TableCell>
-                    {s.device_id && (
+                    <div className="flex gap-1">
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => resetDeviceMutation.mutate(s.id)}
-                        disabled={resetDeviceMutation.isPending}
-                        title="Reset device binding"
+                        onClick={() => openEditDialog(s)}
+                        title="Edit staff"
                       >
-                        <RotateCcw className="h-4 w-4" />
+                        <Pencil className="h-4 w-4" />
                       </Button>
-                    )}
+                      {s.device_id && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => resetDeviceMutation.mutate(s.id)}
+                          disabled={resetDeviceMutation.isPending}
+                          title="Reset device binding"
+                        >
+                          <RotateCcw className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
