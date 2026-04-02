@@ -202,9 +202,10 @@ const PayrollProcessing = () => {
           eis_employer: eis.employer,
           pcb: 0,
           upl_deduction: uplDeduction,
+          late_deduction: lateDeduction,
           net_pay: netPay,
           status: "draft" as const,
-          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays },
+          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays, lateCount, lateMinutes: totalLateMinutes, lateDeduction },
         });
       }
 
