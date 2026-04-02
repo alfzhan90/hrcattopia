@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
 import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
+import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -82,6 +83,27 @@ const StaffHome = () => {
     },
     enabled: !!profile,
   });
+
+  // Check for missed clock-out from previous days
+  const { data: missedClockOut } = useQuery({
+    queryKey: ["missed-clockout", user?.id],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("attendance_logs").select("id, check_in_time")
+        .eq("user_id", user!.id)
+        .lt("check_in_time", today)
+        .is("check_out_time", null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Smart notifications
+  useSmartNotifications(user?.id, branch, activeLog?.check_in_time ?? null, !!activeLog);
 
   // Device binding
   useEffect(() => { setResolvedDeviceId(profile?.device_id ?? null); }, [profile?.device_id]);
@@ -225,6 +247,15 @@ const StaffHome = () => {
           <LogOut className="h-5 w-5" />
         </Button>
       </div>
+
+      {/* Missed Clock-Out Warning */}
+      {missedClockOut && (
+        <Alert variant="destructive" className="rounded-xl">
+          <AlertDescription className="text-sm">
+            ⚠️ You missed a Clock Out on {format(new Date(missedClockOut.check_in_time), "dd MMM yyyy")}. Please contact Admin to rectify your hours.
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Attendance Card */}
       <Card className="overflow-hidden">
