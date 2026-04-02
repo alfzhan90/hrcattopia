@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
 import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
+import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
