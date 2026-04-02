@@ -214,21 +214,25 @@ const PayrollProcessing = () => {
 
       // Upsert
       for (const run of runs) {
+        const { _summary, ...dbRun } = run as any;
         const { data: existing } = await supabase
           .from("payroll_runs")
           .select("id")
           .eq("month", monthDate)
-          .eq("staff_profile_id", run.staff_profile_id)
+          .eq("staff_profile_id", dbRun.staff_profile_id)
           .maybeSingle();
 
         if (existing) {
-          await supabase.from("payroll_runs").update(run).eq("id", existing.id);
+          await supabase.from("payroll_runs").update(dbRun).eq("id", existing.id);
         } else {
-          await supabase.from("payroll_runs").insert(run);
+          await supabase.from("payroll_runs").insert(dbRun);
         }
       }
+      
+      return summaryMap;
     },
-    onSuccess: () => {
+    onSuccess: (summaryMap) => {
+      if (summaryMap) setMonthlySummary(summaryMap);
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       toast({ title: "Payroll calculated", description: "Review and adjust allowance/commission/PCB before releasing." });
     },
