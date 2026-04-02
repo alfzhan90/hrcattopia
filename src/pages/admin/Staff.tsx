@@ -15,28 +15,31 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Smartphone, RotateCcw, Search } from "lucide-react";
+import { usePersistentForm } from "@/hooks/use-persistent-form";
+import { Plus, Smartphone, RotateCcw, Search, Save } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
 type Branch = Tables<"branches">;
+
+const defaultStaffForm = {
+  name: "",
+  ic_number: "",
+  kwsp_number: "",
+  socso_number: "",
+  employment_type: "Monthly-FT",
+  base_rate: "0",
+  ot_rate_per_hour: "0",
+  branch_id: "",
+  user_id: "",
+};
 
 const Staff = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [form, setForm] = useState({
-    name: "",
-    ic_number: "",
-    kwsp_number: "",
-    socso_number: "",
-    employment_type: "Monthly-FT" as "Monthly-FT" | "Hourly-FT",
-    base_rate: "0",
-    ot_rate_per_hour: "0",
-    branch_id: "",
-    user_id: "",
-  });
+  const { form, setForm, hasDraft, clearDraft } = usePersistentForm("staff_form", defaultStaffForm);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
