@@ -44,6 +44,7 @@ const HomeRedirect = () => {
 const AppRoutes = () => (
   <Routes>
     <Route path="/login" element={<Login />} />
+    <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/" element={<HomeRedirect />} />
     <Route
       path="/attendance"
