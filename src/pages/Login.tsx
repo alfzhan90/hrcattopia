@@ -16,12 +16,12 @@ const Login = () => {
   const { toast } = useToast();
   const { user, role, loading: authLoading } = useAuth();
 
-  if (authLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
-        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
-      </div>
-    );
+  if (!authLoading && user && role === "admin") {
+    return <Navigate to="/admin/branches" replace />;
+  }
+
+  if (!authLoading && user && role === "staff") {
+    return <Navigate to="/attendance" replace />;
   }
 
   if (user && role === "admin") {
