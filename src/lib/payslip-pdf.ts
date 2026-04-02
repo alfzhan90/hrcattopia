@@ -4,6 +4,7 @@
 export interface PayslipData {
   companyName: string;
   month: string; // e.g. "January 2026"
+  periodLabel?: string; // e.g. "24/03/2026 – 23/04/2026"
   staffId: string;
   staffName: string;
   icNumber: string;
