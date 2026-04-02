@@ -516,9 +516,9 @@ const PayrollProcessing = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : payrollRuns.length === 0 ? (
-              <TableRow><TableCell colSpan={14} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
             ) : (
               payrollRuns.map((run: any) => (
                 <TableRow key={run.id}>
