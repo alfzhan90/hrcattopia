@@ -27,6 +27,7 @@ const HomeRedirect = () => {
   }
 
   if (!user) return <Navigate to="/login" replace />;
+  if (!role) return <Navigate to="/login" replace />;
   if (role === "admin") return <Navigate to="/admin/branches" replace />;
   return <Navigate to="/attendance" replace />;
 };
