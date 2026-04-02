@@ -1,9 +1,10 @@
 import { NavLink } from "react-router-dom";
-import { Home, Calendar, FileText, User } from "lucide-react";
+import { Home, Calendar, FileText, User, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { to: "/staff/dashboard", icon: Home, label: "Home" },
+  { to: "/staff/logs", icon: ClipboardList, label: "My Logs" },
   { to: "/staff/leave", icon: Calendar, label: "Leave" },
   { to: "/staff/payslips", icon: FileText, label: "Payslips" },
   { to: "/staff/profile", icon: User, label: "Profile" },

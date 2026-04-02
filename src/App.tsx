@@ -13,6 +13,7 @@ import Staff from "@/pages/admin/Staff";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
 import StaffHome from "@/pages/staff/StaffHome";
+import StaffLogs from "@/pages/staff/StaffLogs";
 import StaffLeave from "@/pages/staff/StaffLeave";
 import StaffPayslips from "@/pages/staff/StaffPayslips";
 import StaffProfile from "@/pages/staff/StaffProfile";
