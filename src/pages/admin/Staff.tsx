@@ -227,7 +227,7 @@ const Staff = () => {
                     Draft saved
                   </span>
                 )}
-                <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Creating..." : "Create Staff"}
                 </Button>
