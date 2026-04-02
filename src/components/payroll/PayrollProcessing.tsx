@@ -278,7 +278,7 @@ const PayrollProcessing = () => {
 
   const updateRunMutation = useMutation({
     mutationFn: async (run: any) => {
-      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction);
+      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction) - Number(run.late_deduction ?? 0);
       const epfEmployee = calcEpfEmployee(grossPay);
       const epfEmployer = calcEpfEmployer(grossPay);
       const socso = calcSocso(grossPay);
