@@ -24,6 +24,7 @@ type Branch = Tables<"branches">;
 
 const defaultStaffForm = {
   name: "",
+  email: "",
   ic_number: "",
   kwsp_number: "",
   socso_number: "",
@@ -31,7 +32,6 @@ const defaultStaffForm = {
   base_rate: "0",
   ot_rate_per_hour: "0",
   branch_id: "",
-  user_id: "",
 };
 
 const Staff = () => {
@@ -64,29 +64,39 @@ const Staff = () => {
 
   const createMutation = useMutation({
     mutationFn: async (values: typeof form) => {
-      const { error } = await supabase.from("staff_profiles").insert({
-        name: values.name,
-        ic_number: values.ic_number,
-        kwsp_number: values.kwsp_number || null,
-        socso_number: values.socso_number || null,
-        employment_type: values.employment_type as "Monthly-FT" | "Hourly-FT",
-        base_rate: parseFloat(values.base_rate),
-        ot_rate_per_hour: parseFloat(values.ot_rate_per_hour),
-        branch_id: values.branch_id || null,
-        user_id: values.user_id,
-        staff_id: "auto", // trigger will override
-      });
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
 
-      // Also assign staff role
-      await supabase.from("user_roles").insert({
-        user_id: values.user_id,
-        role: "staff" as const,
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: values.email,
+            name: values.name,
+            ic_number: values.ic_number,
+            kwsp_number: values.kwsp_number || null,
+            socso_number: values.socso_number || null,
+            employment_type: values.employment_type,
+            base_rate: values.base_rate,
+            ot_rate_per_hour: values.ot_rate_per_hour,
+            branch_id: values.branch_id || null,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to invite staff");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
-      toast({ title: "Staff member created" });
+      toast({ title: "Staff invited", description: "An invitation email has been sent." });
       closeDialog(true);
     },
     onError: (error: any) => {
@@ -153,14 +163,15 @@ const Staff = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Auth User ID</Label>
+                <Label>Email Address</Label>
                 <Input
-                  value={form.user_id}
-                  onChange={(e) => setForm({ ...form, user_id: e.target.value })}
-                  placeholder="UUID from auth signup"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="staff@example.com"
                   required
                 />
-                <p className="text-xs text-muted-foreground">The user must sign up first, then enter their UUID here.</p>
+                <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -171,7 +182,15 @@ const Staff = () => {
                   <Label>IC Number</Label>
                   <Input
                     value={form.ic_number}
-                    onChange={(e) => setForm({ ...form, ic_number: e.target.value })}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 12);
+                      const formatted = raw.length > 8
+                        ? `${raw.slice(0, 6)}-${raw.slice(6, 8)}-${raw.slice(8)}`
+                        : raw.length > 6
+                        ? `${raw.slice(0, 6)}-${raw.slice(6)}`
+                        : raw;
+                      setForm({ ...form, ic_number: formatted });
+                    }}
                     placeholder="######-##-####"
                     required
                   />
@@ -229,7 +248,7 @@ const Staff = () => {
                 )}
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Creating..." : "Create Staff"}
+                  {createMutation.isPending ? "Sending Invite..." : "Invite & Create Staff"}
                 </Button>
               </div>
             </form>
