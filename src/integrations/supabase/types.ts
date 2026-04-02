@@ -105,31 +105,49 @@ export type Database = {
       }
       leave_records: {
         Row: {
+          approved_at: string | null
+          approved_by: string | null
           created_at: string
           created_by: string
           date: string
+          end_date: string | null
           id: string
           leave_type: Database["public"]["Enums"]["leave_type"]
+          mc_file_url: string | null
           notes: string | null
+          reason: string | null
           staff_profile_id: string
+          status: Database["public"]["Enums"]["leave_status"]
         }
         Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by: string
           date: string
+          end_date?: string | null
           id?: string
           leave_type: Database["public"]["Enums"]["leave_type"]
+          mc_file_url?: string | null
           notes?: string | null
+          reason?: string | null
           staff_profile_id: string
+          status?: Database["public"]["Enums"]["leave_status"]
         }
         Update: {
+          approved_at?: string | null
+          approved_by?: string | null
           created_at?: string
           created_by?: string
           date?: string
+          end_date?: string | null
           id?: string
           leave_type?: Database["public"]["Enums"]["leave_type"]
+          mc_file_url?: string | null
           notes?: string | null
+          reason?: string | null
           staff_profile_id?: string
+          status?: Database["public"]["Enums"]["leave_status"]
         }
         Relationships: [
           {
@@ -345,7 +363,8 @@ export type Database = {
       app_role: "admin" | "staff"
       attendance_status: "on_time" | "late" | "out_of_range"
       employment_type: "Monthly-FT" | "Hourly-FT"
-      leave_type: "AL" | "MC" | "UPL"
+      leave_status: "pending" | "approved" | "rejected"
+      leave_type: "AL" | "MC" | "UPL" | "EL"
       payroll_status: "draft" | "released"
     }
     CompositeTypes: {
@@ -477,7 +496,8 @@ export const Constants = {
       app_role: ["admin", "staff"],
       attendance_status: ["on_time", "late", "out_of_range"],
       employment_type: ["Monthly-FT", "Hourly-FT"],
-      leave_type: ["AL", "MC", "UPL"],
+      leave_status: ["pending", "approved", "rejected"],
+      leave_type: ["AL", "MC", "UPL", "EL"],
       payroll_status: ["draft", "released"],
     },
   },

@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
 import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachWeekOfInterval, isSameWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, eachDayOfInterval, isWeekend, isSameWeek } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -22,6 +22,7 @@ const PayrollProcessing = () => {
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [editOpen, setEditOpen] = useState(false);
   const [editRun, setEditRun] = useState<any>(null);
+  const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number }>>({});
 
   const monthDate = `${selectedMonth}-01`;
 
@@ -84,22 +85,49 @@ const PayrollProcessing = () => {
         .lte("check_in_time", format(end, "yyyy-MM-dd"));
       if (logError) throw logError;
 
-      // Get leave records
+      // Get APPROVED leave records only
       const { data: leaveRecords, error: leaveError } = await supabase
         .from("leave_records")
         .select("*")
         .gte("date", format(start, "yyyy-MM-dd"))
-        .lte("date", format(end, "yyyy-MM-dd"));
+        .lte("date", format(end, "yyyy-MM-dd"))
+        .eq("status", "approved" as any);
       if (leaveError) throw leaveError;
 
       const holidayDates = new Map(holidays.map((h: any) => [h.date, h.multiplier]));
+
+      // Calculate working days in the month (exclude weekends & public holidays)
+      const allDays = eachDayOfInterval({ start, end });
+      const workingDays = allDays.filter(
+        (d) => !isWeekend(d) && !holidayDates.has(format(d, "yyyy-MM-dd"))
+      );
+      const totalWorkingDays = workingDays.length;
 
       const runs = [];
 
       for (const s of staff) {
         const staffLogs = (allLogs ?? []).filter((l) => l.user_id === s.user_id);
         const staffLeave = (leaveRecords ?? []).filter((lr: any) => lr.staff_profile_id === s.id);
-        const uplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
+        
+        // Count days by type
+        const attendanceDates = new Set(
+          staffLogs.map((l) => format(new Date(l.check_in_time), "yyyy-MM-dd"))
+        );
+        const alDays = staffLeave.filter((lr: any) => lr.leave_type === "AL").length;
+        const mcDays = staffLeave.filter((lr: any) => lr.leave_type === "MC").length;
+        const elDays = staffLeave.filter((lr: any) => lr.leave_type === "EL").length;
+        const explicitUplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
+        const leaveDates = new Set(staffLeave.map((lr: any) => lr.date));
+        
+        // MIA: working days with no attendance AND no approved leave
+        const miaDays = workingDays.filter((d) => {
+          const dateStr = format(d, "yyyy-MM-dd");
+          return !attendanceDates.has(dateStr) && !leaveDates.has(dateStr);
+        }).length;
+        
+        // Total UPL = explicit UPL + MIA days
+        const totalUplDays = explicitUplDays + miaDays;
+        const daysWorked = attendanceDates.size;
 
         const basicPay = Number(s.base_rate);
         const hourlyRate = calcHourlyRate(basicPay);
@@ -146,7 +174,7 @@ const PayrollProcessing = () => {
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
-        const uplDeduction = calcUplDeduction(basicPay, uplDays);
+        const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
         const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
@@ -174,26 +202,37 @@ const PayrollProcessing = () => {
           upl_deduction: uplDeduction,
           net_pay: netPay,
           status: "draft" as const,
+          _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays },
         });
+      }
+
+      // Store summary
+      const summaryMap: typeof monthlySummary = {};
+      for (const run of runs) {
+        summaryMap[run.staff_profile_id] = (run as any)._summary;
       }
 
       // Upsert
       for (const run of runs) {
+        const { _summary, ...dbRun } = run as any;
         const { data: existing } = await supabase
           .from("payroll_runs")
           .select("id")
           .eq("month", monthDate)
-          .eq("staff_profile_id", run.staff_profile_id)
+          .eq("staff_profile_id", dbRun.staff_profile_id)
           .maybeSingle();
 
         if (existing) {
-          await supabase.from("payroll_runs").update(run).eq("id", existing.id);
+          await supabase.from("payroll_runs").update(dbRun).eq("id", existing.id);
         } else {
-          await supabase.from("payroll_runs").insert(run);
+          await supabase.from("payroll_runs").insert(dbRun);
         }
       }
+      
+      return summaryMap;
     },
-    onSuccess: () => {
+    onSuccess: (summaryMap) => {
+      if (summaryMap) setMonthlySummary(summaryMap);
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       toast({ title: "Payroll calculated", description: "Review and adjust allowance/commission/PCB before releasing." });
     },
@@ -329,6 +368,49 @@ const PayrollProcessing = () => {
           )}
         </div>
       </div>
+
+      {/* Monthly Attendance Summary */}
+      {Object.keys(monthlySummary).length > 0 && (
+        <div className="rounded-lg border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Staff</TableHead>
+                <TableHead>Days Worked</TableHead>
+                <TableHead>AL</TableHead>
+                <TableHead>MC</TableHead>
+                <TableHead>EL</TableHead>
+                <TableHead>UPL</TableHead>
+                <TableHead>MIA</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(monthlySummary).map(([profileId, summary]) => (
+                <TableRow key={profileId}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-sm">{getStaffName(profileId)}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{getStaffId(profileId)}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{summary.daysWorked}</TableCell>
+                  <TableCell>{summary.al}</TableCell>
+                  <TableCell>{summary.mc}</TableCell>
+                  <TableCell>{summary.el}</TableCell>
+                  <TableCell>{summary.upl}</TableCell>
+                  <TableCell>
+                    {summary.mia > 0 ? (
+                      <Badge variant="destructive">{summary.mia}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
 
       <div className="rounded-lg border overflow-x-auto">
         <Table>

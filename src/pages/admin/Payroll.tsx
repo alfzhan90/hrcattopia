@@ -4,6 +4,7 @@ import AttendanceCorrection from "@/components/payroll/AttendanceCorrection";
 import LeaveManagement from "@/components/payroll/LeaveManagement";
 import HolidayCalendar from "@/components/payroll/HolidayCalendar";
 import PayrollProcessing from "@/components/payroll/PayrollProcessing";
+import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
@@ -18,13 +19,17 @@ const Payroll = () => {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
+          <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
-          <TabsTrigger value="leave">Leave</TabsTrigger>
+          <TabsTrigger value="leave">Leave Balances</TabsTrigger>
           <TabsTrigger value="holidays">Holidays</TabsTrigger>
         </TabsList>
 
         <TabsContent value="payroll" className="mt-4">
           <PayrollProcessing />
+        </TabsContent>
+        <TabsContent value="approval" className="mt-4">
+          <LeaveApprovalInbox />
         </TabsContent>
         <TabsContent value="attendance" className="mt-4">
           <AttendanceCorrection />

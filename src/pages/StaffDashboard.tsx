@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, LogOut, Calendar, Clock } from "lucide-react";
+import LeaveRequestForm from "@/components/leave/LeaveRequestForm";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
@@ -154,11 +155,16 @@ const StaffDashboard = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="payslips">
+        <Tabs defaultValue="leave">
           <TabsList>
+            <TabsTrigger value="leave">Leave</TabsTrigger>
             <TabsTrigger value="payslips">Payslips</TabsTrigger>
             <TabsTrigger value="attendance">Attendance History</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="leave" className="mt-4">
+            <LeaveRequestForm />
+          </TabsContent>
 
           <TabsContent value="payslips" className="mt-4">
             <div className="rounded-lg border">
