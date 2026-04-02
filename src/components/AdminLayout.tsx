@@ -20,10 +20,23 @@ const AdminLayout = () => {
       {/* Sidebar */}
       <aside className="w-64 border-r bg-sidebar-background flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-lg font-semibold text-sidebar-foreground">HR & Payroll</h1>
-          <p className="text-xs text-muted-foreground mt-1 truncate">{user?.email}</p>
+          <div className="flex items-center gap-3">
+            {companySettings?.logo_url && (
+              <img src={companySettings.logo_url} alt="Logo" className="h-8 w-8 object-contain rounded" />
+            )}
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold text-sidebar-foreground truncate">
+                {companySettings?.company_name || "HR & Payroll"}
+              </h1>
+              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+            </div>
+          </div>
         </div>
         <nav className="flex-1 p-4 space-y-1">
+          <NavLink to="/admin/company" className={linkClass}>
+            <Settings className="h-4 w-4" />
+            Company Settings
+          </NavLink>
           <NavLink to="/admin/branches" className={linkClass}>
             <Building2 className="h-4 w-4" />
             Branches
