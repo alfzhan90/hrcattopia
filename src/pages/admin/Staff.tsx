@@ -182,7 +182,15 @@ const Staff = () => {
                   <Label>IC Number</Label>
                   <Input
                     value={form.ic_number}
-                    onChange={(e) => setForm({ ...form, ic_number: e.target.value })}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^0-9]/g, "").slice(0, 12);
+                      const formatted = raw.length > 8
+                        ? `${raw.slice(0, 6)}-${raw.slice(6, 8)}-${raw.slice(8)}`
+                        : raw.length > 6
+                        ? `${raw.slice(0, 6)}-${raw.slice(6)}`
+                        : raw;
+                      setForm({ ...form, ic_number: formatted });
+                    }}
                     placeholder="######-##-####"
                     required
                   />
