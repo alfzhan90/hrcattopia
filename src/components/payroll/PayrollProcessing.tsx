@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
-import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction } from "@/lib/payroll";
+import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
