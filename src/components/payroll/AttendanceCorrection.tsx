@@ -161,11 +161,37 @@ const AttendanceCorrection = () => {
                     <TableCell>{Number(log.rest_hours ?? 0).toFixed(2)}</TableCell>
                     <TableCell>{Number(log.net_hours ?? 0).toFixed(2)}</TableCell>
                     <TableCell>{Number(log.ot_hours).toFixed(2)}</TableCell>
-                    <TableCell>{log.status}</TableCell>
                     <TableCell>
-                      <Button size="sm" variant="ghost" onClick={() => openEdit(log)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                      {Number(log.late_minutes) > 0 ? (
+                        <span className={`text-sm font-medium ${log.late_waived ? 'line-through text-muted-foreground' : 'text-destructive'}`}>
+                          {Number(log.late_minutes)}min{log.late_waived ? ' (waived)' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <span className={log.status === 'late' && !log.late_waived ? 'text-destructive font-medium' : ''}>
+                        {log.status}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        <Button size="sm" variant="ghost" onClick={() => openEdit(log)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {Number(log.late_minutes) > 0 && !log.late_waived && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-amber-600 text-xs"
+                            onClick={() => waiveMutation.mutate(log.id)}
+                            title="Waive lateness"
+                          >
+                            Waive
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
