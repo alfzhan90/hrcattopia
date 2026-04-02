@@ -26,6 +26,7 @@ const PayrollProcessing = () => {
   const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number; lateCount: number; lateMinutes: number; lateDeduction: number }>>({});
 
   const monthDate = `${selectedMonth}-01`;
+  const payPeriod = getPayPeriod(selectedMonth);
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-payroll"],
