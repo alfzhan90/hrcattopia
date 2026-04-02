@@ -163,14 +163,15 @@ const Staff = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label>Auth User ID</Label>
+                <Label>Email Address</Label>
                 <Input
-                  value={form.user_id}
-                  onChange={(e) => setForm({ ...form, user_id: e.target.value })}
-                  placeholder="UUID from auth signup"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="staff@example.com"
                   required
                 />
-                <p className="text-xs text-muted-foreground">The user must sign up first, then enter their UUID here.</p>
+                <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
