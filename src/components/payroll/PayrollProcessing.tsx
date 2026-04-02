@@ -84,15 +84,23 @@ const PayrollProcessing = () => {
         .lte("check_in_time", format(end, "yyyy-MM-dd"));
       if (logError) throw logError;
 
-      // Get leave records
+      // Get APPROVED leave records only
       const { data: leaveRecords, error: leaveError } = await supabase
         .from("leave_records")
         .select("*")
         .gte("date", format(start, "yyyy-MM-dd"))
-        .lte("date", format(end, "yyyy-MM-dd"));
+        .lte("date", format(end, "yyyy-MM-dd"))
+        .eq("status", "approved" as any);
       if (leaveError) throw leaveError;
 
       const holidayDates = new Map(holidays.map((h: any) => [h.date, h.multiplier]));
+
+      // Calculate working days in the month (exclude weekends & public holidays)
+      const allDays = eachDayOfInterval({ start, end });
+      const workingDays = allDays.filter(
+        (d) => !isWeekend(d) && !holidayDates.has(format(d, "yyyy-MM-dd"))
+      );
+      const totalWorkingDays = workingDays.length;
 
       const runs = [];
 
