@@ -422,6 +422,9 @@ const PayrollProcessing = () => {
           )}
         </div>
       </div>
+      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
+        <span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}
+      </div>
 
       {/* Monthly Attendance Summary */}
       {Object.keys(monthlySummary).length > 0 && (
