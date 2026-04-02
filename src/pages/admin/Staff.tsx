@@ -386,10 +386,17 @@ const Staff = () => {
                   </TableCell>
                   <TableCell>
                     {s.device_id ? (
-                      <Badge variant="outline" className="gap-1">
-                        <Smartphone className="h-3 w-3" />
-                        Bound
-                      </Badge>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge variant="outline" className="gap-1 cursor-help">
+                            <Smartphone className="h-3 w-3" />
+                            Bound
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="font-mono text-xs">{s.device_id}</p>
+                        </TooltipContent>
+                      </Tooltip>
                     ) : (
                       <span className="text-xs text-muted-foreground">Not set</span>
                     )}
