@@ -34,6 +34,10 @@ const AdminLayout = () => {
             <ClipboardList className="h-4 w-4" />
             Live Attendance
           </NavLink>
+          <NavLink to="/admin/payroll" className={linkClass}>
+            <DollarSign className="h-4 w-4" />
+            Payroll
+          </NavLink>
         </nav>
         <div className="p-4 border-t">
           <Button variant="ghost" className="w-full justify-start gap-3" onClick={signOut}>
