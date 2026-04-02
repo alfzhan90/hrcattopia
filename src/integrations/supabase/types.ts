@@ -14,16 +14,183 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      attendance_logs: {
+        Row: {
+          branch_id: string
+          check_in_lat: number | null
+          check_in_long: number | null
+          check_in_time: string
+          check_out_time: string | null
+          created_at: string
+          id: string
+          status: Database["public"]["Enums"]["attendance_status"]
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          check_in_lat?: number | null
+          check_in_long?: number | null
+          check_in_time?: string
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          check_in_lat?: number | null
+          check_in_long?: number | null
+          check_in_time?: string
+          check_out_time?: string | null
+          created_at?: string
+          id?: string
+          status?: Database["public"]["Enums"]["attendance_status"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_logs_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string
+          created_at: string
+          id: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters: number
+          updated_at: string
+        }
+        Insert: {
+          address: string
+          created_at?: string
+          id?: string
+          latitude: number
+          longitude: number
+          name: string
+          radius_meters?: number
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          id?: string
+          latitude?: number
+          longitude?: number
+          name?: string
+          radius_meters?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_profiles: {
+        Row: {
+          al_balance: number
+          base_rate: number
+          branch_id: string | null
+          created_at: string
+          device_id: string | null
+          employment_type: Database["public"]["Enums"]["employment_type"]
+          ic_number: string
+          id: string
+          kwsp_number: string | null
+          mc_balance: number
+          name: string
+          ot_rate_per_hour: number
+          socso_number: string | null
+          staff_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          al_balance?: number
+          base_rate?: number
+          branch_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
+          ic_number: string
+          id?: string
+          kwsp_number?: string | null
+          mc_balance?: number
+          name: string
+          ot_rate_per_hour?: number
+          socso_number?: string | null
+          staff_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          al_balance?: number
+          base_rate?: number
+          branch_id?: string | null
+          created_at?: string
+          device_id?: string | null
+          employment_type?: Database["public"]["Enums"]["employment_type"]
+          ic_number?: string
+          id?: string
+          kwsp_number?: string | null
+          mc_balance?: number
+          name?: string
+          ot_rate_per_hour?: number
+          socso_number?: string | null
+          staff_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_profiles_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "staff"
+      attendance_status: "on_time" | "late" | "out_of_range"
+      employment_type: "Monthly-FT" | "Hourly-FT"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +317,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "staff"],
+      attendance_status: ["on_time", "late", "out_of_range"],
+      employment_type: ["Monthly-FT", "Hourly-FT"],
+    },
   },
 } as const
