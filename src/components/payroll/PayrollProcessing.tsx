@@ -365,7 +365,7 @@ const PayrollProcessing = () => {
     doc.text(`Date: ${format(new Date(), "dd MMMM yyyy")}`, 20, y);
     doc.text(`To: ${s.name} (${s.staff_id})`, 20, y + 10);
     doc.text(`IC: ${s.ic_number}`, 20, y + 17);
-    doc.text(`Subject: Formal Warning — Excessive Lateness (${monthLabel})`, 20, y + 30);
+    doc.text(`Subject: Formal Warning — Excessive Lateness (${wMonthLabel})`, 20, y + 30);
     
     const body = [
       `Dear ${s.name},`,
