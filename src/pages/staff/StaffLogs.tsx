@@ -8,13 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Clock, Filter } from "lucide-react";
-import { format, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
+import { getPayPeriod } from "@/lib/payroll";
 
 const StaffLogs = () => {
   const { user } = useAuth();
-  const [startDate, setStartDate] = useState<Date>(startOfMonth(new Date()));
-  const [endDate, setEndDate] = useState<Date>(endOfMonth(new Date()));
+  const currentPeriod = getPayPeriod(format(new Date(), "yyyy-MM"));
+  const [startDate, setStartDate] = useState<Date>(currentPeriod.start);
+  const [endDate, setEndDate] = useState<Date>(currentPeriod.end);
 
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["my-logs", user?.id, startDate.toISOString(), endDate.toISOString()],
