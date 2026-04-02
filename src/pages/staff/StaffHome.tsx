@@ -84,6 +84,27 @@ const StaffHome = () => {
     enabled: !!profile,
   });
 
+  // Check for missed clock-out from previous days
+  const { data: missedClockOut } = useQuery({
+    queryKey: ["missed-clockout", user?.id],
+    queryFn: async () => {
+      const today = new Date().toISOString().split("T")[0];
+      const { data, error } = await supabase
+        .from("attendance_logs").select("id, check_in_time")
+        .eq("user_id", user!.id)
+        .lt("check_in_time", today)
+        .is("check_out_time", null)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  // Smart notifications
+  useSmartNotifications(user?.id, branch, activeLog?.check_in_time ?? null, !!activeLog);
+
   // Device binding
   useEffect(() => { setResolvedDeviceId(profile?.device_id ?? null); }, [profile?.device_id]);
 
