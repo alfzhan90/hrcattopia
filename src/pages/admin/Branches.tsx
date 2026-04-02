@@ -280,6 +280,7 @@ const Branches = () => {
               <TableHead>Address</TableHead>
               <TableHead>Lat / Lng</TableHead>
               <TableHead>Radius</TableHead>
+              <TableHead>Start / Grace</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
