@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -15,11 +14,22 @@ const Login = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const { user, role } = useAuth();
+  const { user, role, loading: authLoading } = useAuth();
 
-  if (user) {
-    return <Navigate to={role === "admin" ? "/admin/branches" : "/attendance"} replace />;
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (user && role === "admin") {
+    return <Navigate to="/admin/branches" replace />;
+  }
+
+  if (user && role === "staff") {
+    return <Navigate to="/attendance" replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,7 +54,6 @@ const Login = () => {
           password,
         });
         if (error) throw error;
-        navigate("/admin/branches");
       }
     } catch (error: any) {
       toast({
