@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
