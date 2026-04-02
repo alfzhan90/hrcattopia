@@ -44,23 +44,34 @@ const Branches = () => {
 
   const saveMutation = useMutation({
     mutationFn: async (values: typeof form) => {
+      const lat = parseFloat(values.latitude);
+      const lng = parseFloat(values.longitude);
+      const radius = parseInt(values.radius_meters);
+
+      if (isNaN(lat) || isNaN(lng) || isNaN(radius)) {
+        throw new Error("Invalid coordinates or radius. Please enter valid numbers.");
+      }
+
       const payload = {
         name: values.name,
         address: values.address,
-        latitude: parseFloat(values.latitude),
-        longitude: parseFloat(values.longitude),
-        radius_meters: parseInt(values.radius_meters),
+        latitude: lat,
+        longitude: lng,
+        radius_meters: radius,
       };
 
       if (editingBranch) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("branches")
           .update(payload)
-          .eq("id", editingBranch.id);
-        if (error) throw error;
+          .eq("id", editingBranch.id)
+          .select();
+        if (error) throw new Error(`Update failed: ${error.message} (${error.code})`);
+        if (!data || data.length === 0) throw new Error("Update failed: No rows affected. Check permissions.");
       } else {
-        const { error } = await supabase.from("branches").insert(payload);
-        if (error) throw error;
+        const { data, error } = await supabase.from("branches").insert(payload).select();
+        if (error) throw new Error(`Insert failed: ${error.message} (${error.code})`);
+        if (!data || data.length === 0) throw new Error("Insert failed: No rows returned. Check RLS policies.");
       }
     },
     onSuccess: () => {
@@ -69,7 +80,11 @@ const Branches = () => {
       closeDialog();
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({
+        title: "Save Failed",
+        description: error.message || "An unknown error occurred. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
