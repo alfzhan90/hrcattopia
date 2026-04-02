@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download } from "lucide-react";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
+import { getPayPeriod } from "@/lib/payroll";
 import { format } from "date-fns";
 
 const StaffPayslips = () => {
