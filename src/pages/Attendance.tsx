@@ -200,14 +200,20 @@ const Attendance = () => {
 
       const checkIn = new Date(activeLog.check_in_time);
       const now = new Date();
-      const durationHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-      const regularHours = Math.min(durationHours, 8);
-      const otHours = Math.max(durationHours - 8, 0);
+      const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
+      
+      // Rest deduction: 1 hour per 5 hours worked
+      const restHours = Math.floor(totalHours / 5);
+      const netHours = Math.max(totalHours - restHours, 0);
+      const regularHours = Math.min(netHours, 8);
+      const otHours = Math.max(netHours - 8, 0);
 
       const { error } = await supabase
         .from("attendance_logs")
         .update({
           check_out_time: now.toISOString(),
+          rest_hours: Math.round(restHours * 100) / 100,
+          net_hours: Math.round(netHours * 100) / 100,
           regular_hours: Math.round(regularHours * 100) / 100,
           ot_hours: Math.round(otHours * 100) / 100,
         })

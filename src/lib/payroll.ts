@@ -1,5 +1,26 @@
 // Malaysian 2026 Statutory Calculation Helpers
 
+/** Calculate rest hours: 1 hour for every 5 hours worked */
+export const calcRestHours = (totalHours: number): number => {
+  return Math.floor(totalHours / 5);
+};
+
+/** Calculate net hours after rest deduction */
+export const calcNetHours = (totalHours: number): number => {
+  const rest = calcRestHours(totalHours);
+  return Math.max(totalHours - rest, 0);
+};
+
+/** Calculate daily OT: net hours exceeding 8 at 1.5x */
+export const calcDailyOt = (netHours: number): number => {
+  return Math.max(netHours - 8, 0);
+};
+
+/** Calculate base hourly rate: (Basic Salary / 26 days) / 8 hours */
+export const calcHourlyRate = (monthlySalary: number): number => {
+  return monthlySalary / 26 / 8;
+};
+
 /** EPF Employee: 11% */
 export const calcEpfEmployee = (salary: number) => Math.round(salary * 0.11 * 100) / 100;
 
