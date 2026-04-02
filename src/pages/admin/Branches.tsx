@@ -212,7 +212,13 @@ const Branches = () => {
                 <MapPin className="inline h-3 w-3 mr-1" />
                 Tip: Click on the map to set coordinates automatically.
               </p>
-              <div className="flex gap-2 justify-end">
+              <div className="flex items-center gap-2 justify-end">
+                {hasDraft && !editingBranch && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1 mr-auto">
+                    <Save className="h-3 w-3" />
+                    Draft saved
+                  </span>
+                )}
                 <Button type="button" variant="outline" onClick={closeDialog}>
                   Cancel
                 </Button>

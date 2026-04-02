@@ -113,14 +113,7 @@ const Staff = () => {
 
   const closeDialog = () => {
     setDialogOpen(false);
-    setForm({
-      name: "",
-      ic_number: "",
-      kwsp_number: "",
-      socso_number: "",
-      employment_type: "Monthly-FT",
-      base_rate: "0",
-      ot_rate_per_hour: "0",
+    clearDraft();
       branch_id: "",
       user_id: "",
     });
