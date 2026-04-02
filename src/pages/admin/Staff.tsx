@@ -69,7 +69,7 @@ const Staff = () => {
         ic_number: values.ic_number,
         kwsp_number: values.kwsp_number || null,
         socso_number: values.socso_number || null,
-        employment_type: values.employment_type,
+        employment_type: values.employment_type as "Monthly-FT" | "Hourly-FT",
         base_rate: parseFloat(values.base_rate),
         ot_rate_per_hour: parseFloat(values.ot_rate_per_hour),
         branch_id: values.branch_id || null,
