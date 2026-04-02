@@ -72,35 +72,40 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     let mounted = true;
     let requestId = 0;
+    let resolvedUserId: string | null = null;
 
-    const resolveAuth = async (nextSession: Session | null) => {
-      const currentRequest = ++requestId;
-
+    const resolveAuth = async (nextSession: Session | null, event?: string) => {
       if (!mounted) return;
 
+      const nextUserId = nextSession?.user?.id ?? null;
+
+      // Skip re-resolve if the user hasn't changed (e.g. TOKEN_REFRESHED on tab focus)
+      if (resolvedUserId && nextUserId === resolvedUserId && event !== "SIGNED_OUT") {
+        // Just update session/user refs without loading flash
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        return;
+      }
+
+      const currentRequest = ++requestId;
       setLoading(true);
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
-      if (!nextSession?.user) {
+      if (!nextUserId) {
+        resolvedUserId = null;
         setRole(null);
         setLoading(false);
         return;
       }
 
       try {
-        const nextRole = await resolveRoleWithTimeout(nextSession.user.id);
-
-        if (!mounted || currentRequest !== requestId) {
-          return;
-        }
-
+        const nextRole = await resolveRoleWithTimeout(nextUserId);
+        if (!mounted || currentRequest !== requestId) return;
+        resolvedUserId = nextUserId;
         setRole(nextRole);
       } catch {
-        if (!mounted || currentRequest !== requestId) {
-          return;
-        }
-
+        if (!mounted || currentRequest !== requestId) return;
         setRole(null);
       } finally {
         if (mounted && currentRequest === requestId) {
@@ -111,12 +116,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      void resolveAuth(nextSession);
+    } = supabase.auth.onAuthStateChange((event, nextSession) => {
+      void resolveAuth(nextSession, event);
     });
 
     void supabase.auth.getSession().then(({ data: { session: nextSession } }) => {
-      void resolveAuth(nextSession);
+      void resolveAuth(nextSession, "INITIAL");
     });
 
     return () => {
