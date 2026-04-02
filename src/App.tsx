@@ -62,6 +62,7 @@ const AppRoutes = () => (
       }
     >
       <Route path="dashboard" element={<StaffHome />} />
+      <Route path="logs" element={<StaffLogs />} />
       <Route path="leave" element={<StaffLeave />} />
       <Route path="payslips" element={<StaffPayslips />} />
       <Route path="profile" element={<StaffProfile />} />
