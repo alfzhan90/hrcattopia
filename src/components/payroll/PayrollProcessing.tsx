@@ -353,7 +353,7 @@ const PayrollProcessing = () => {
     if (!s) return;
     
     const doc = new jsPDF();
-    const monthLabel = format(new Date(monthDate), "MMMM yyyy");
+    const warningMonthLabel = format(new Date(monthDate), "MMMM yyyy");
     const monthLabel = format(new Date(monthDate), "MMMM yyyy");
     
     doc.setFontSize(16);
