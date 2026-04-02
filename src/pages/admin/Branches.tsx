@@ -219,7 +219,7 @@ const Branches = () => {
                     Draft saved
                   </span>
                 )}
-                <Button type="button" variant="outline" onClick={closeDialog}>
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingBranch(null); }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saveMutation.isPending}>
