@@ -115,6 +115,39 @@ export type Database = {
         }
         Relationships: []
       }
+      company_settings: {
+        Row: {
+          address: string
+          company_name: string
+          created_at: string
+          id: string
+          logo_url: string | null
+          phone: string
+          ssm_number: string
+          updated_at: string
+        }
+        Insert: {
+          address?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          phone?: string
+          ssm_number?: string
+          updated_at?: string
+        }
+        Update: {
+          address?: string
+          company_name?: string
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          phone?: string
+          ssm_number?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leave_records: {
         Row: {
           approved_at: string | null

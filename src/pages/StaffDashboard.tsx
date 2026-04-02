@@ -74,7 +74,7 @@ const StaffDashboard = () => {
   const downloadPayslip = async (run: any) => {
     if (!profile) return;
     const blob = await generatePayslipPdf({
-      companyName: "CATTOPIA SDN BHD",
+      companyName: "CATTOPIA SDN BHD",  // Legacy page – company settings not integrated here
       month: format(new Date(run.month), "MMMM yyyy"),
       staffId: profile.staff_id,
       staffName: profile.name,

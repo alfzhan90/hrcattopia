@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -13,6 +14,7 @@ import { format } from "date-fns";
 const StaffPayslips = () => {
   const { user } = useAuth();
   const [preview, setPreview] = useState<any>(null);
+  const { data: companySettings } = useCompanySettings();
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -47,7 +49,7 @@ const StaffPayslips = () => {
     if (!profile) return;
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
-      companyName: "CATTOPIA SDN BHD",
+      companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       periodLabel: period.label,
       month: format(new Date(run.month), "MMMM yyyy"),
       staffId: profile.staff_id, staffName: profile.name, icNumber: profile.ic_number,

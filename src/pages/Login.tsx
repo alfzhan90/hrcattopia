@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 
 const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -16,6 +17,7 @@ const Login = () => {
   const [forgotMode, setForgotMode] = useState(false);
   const { toast } = useToast();
   const { user, role, loading: authLoading, signOut } = useAuth();
+  const { data: companySettings } = useCompanySettings();
 
   if (!authLoading && user && role === "admin") {
     return <Navigate to="/admin/branches" replace />;
@@ -98,7 +100,12 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">HR & Payroll System</CardTitle>
+          {companySettings?.logo_url && (
+            <div className="flex justify-center mb-4">
+              <img src={companySettings.logo_url} alt="Company Logo" className="h-16 w-auto object-contain" />
+            </div>
+          )}
+          <CardTitle className="text-2xl">{companySettings?.company_name || "HR & Payroll System"}</CardTitle>
           <CardDescription>
             {forgotMode ? "Reset your password" : isSignUp ? "Create an account" : "Sign in to your account"}
           </CardDescription>

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCompanySettings } from "@/hooks/use-company-settings";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +21,7 @@ type StaffProfile = Tables<"staff_profiles">;
 const PayrollProcessing = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { data: companySettings } = useCompanySettings();
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [editOpen, setEditOpen] = useState(false);
   const [editRun, setEditRun] = useState<any>(null);
@@ -313,7 +315,7 @@ const PayrollProcessing = () => {
 
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
-      companyName: "CATTOPIA SDN BHD",
+      companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
       periodLabel: period.label,
       staffId: s.staff_id,

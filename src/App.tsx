@@ -8,8 +8,10 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
 import StaffLayout from "@/components/StaffLayout";
 import Login from "@/pages/Login";
+import CompanySettings from "@/pages/admin/CompanySettings";
 import Branches from "@/pages/admin/Branches";
 import Staff from "@/pages/admin/Staff";
+import AttendanceRecords from "@/pages/admin/AttendanceRecords";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
 import StaffHome from "@/pages/staff/StaffHome";
@@ -76,8 +78,10 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     >
+      <Route path="company" element={<CompanySettings />} />
       <Route path="branches" element={<Branches />} />
       <Route path="staff" element={<Staff />} />
+      <Route path="records" element={<AttendanceRecords />} />
       <Route path="attendance" element={<LiveAttendance />} />
       <Route path="payroll" element={<Payroll />} />
     </Route>
