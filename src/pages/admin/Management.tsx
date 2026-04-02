@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { RefreshCw, Clock, MapPin, Users, Search, X } from "lucide-react";
+import { RefreshCw, Clock, MapPin, Users, Search, X, Car } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -52,12 +52,27 @@ const Management = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_profiles")
-        .select("user_id, name, staff_id, branch_id");
+        .select("user_id, name, staff_id, branch_id, employment_type");
       if (error) throw error;
-      const map: Record<string, { name: string; staff_id: string; branch_id: string | null }> = {};
+      const map: Record<string, { name: string; staff_id: string; branch_id: string | null; employment_type: string }> = {};
       data?.forEach((s) => { map[s.user_id] = s; });
       return map;
     },
+  });
+
+  // Today's branch visits (Area Managers)
+  const { data: todayVisits = [] } = useQuery({
+    queryKey: ["mgmt-visits", today],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("branch_visits")
+        .select("*, staff_profiles(user_id, name, staff_id), branches(name)")
+        .gte("visited_at", today)
+        .order("visited_at", { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    refetchInterval: 30000,
   });
 
   // Derived data
