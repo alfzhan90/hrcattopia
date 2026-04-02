@@ -11,6 +11,7 @@ import Branches from "@/pages/admin/Branches";
 import Staff from "@/pages/admin/Staff";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Attendance from "@/pages/Attendance";
+import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient({
