@@ -6,13 +6,16 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AdminLayout from "@/components/AdminLayout";
+import StaffLayout from "@/components/StaffLayout";
 import Login from "@/pages/Login";
 import Branches from "@/pages/admin/Branches";
 import Staff from "@/pages/admin/Staff";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
-import Attendance from "@/pages/Attendance";
-import StaffDashboard from "@/pages/StaffDashboard";
+import StaffHome from "@/pages/staff/StaffHome";
+import StaffLeave from "@/pages/staff/StaffLeave";
+import StaffPayslips from "@/pages/staff/StaffPayslips";
+import StaffProfile from "@/pages/staff/StaffProfile";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound.tsx";
 
@@ -48,22 +51,21 @@ const AppRoutes = () => (
     <Route path="/login" element={<Login />} />
     <Route path="/reset-password" element={<ResetPassword />} />
     <Route path="/" element={<HomeRedirect />} />
+    {/* Staff mobile routes */}
     <Route
-      path="/attendance"
+      path="/staff"
       element={
         <ProtectedRoute>
-          <Attendance />
+          <StaffLayout />
         </ProtectedRoute>
       }
-    />
-    <Route
-      path="/staff/dashboard"
-      element={
-        <ProtectedRoute>
-          <StaffDashboard />
-        </ProtectedRoute>
-      }
-    />
+    >
+      <Route path="dashboard" element={<StaffHome />} />
+      <Route path="leave" element={<StaffLeave />} />
+      <Route path="payslips" element={<StaffPayslips />} />
+      <Route path="profile" element={<StaffProfile />} />
+    </Route>
+    {/* Admin routes */}
     <Route
       path="/admin"
       element={
