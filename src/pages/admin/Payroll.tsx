@@ -19,8 +19,9 @@ const Payroll = () => {
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
+          <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
-          <TabsTrigger value="leave">Leave</TabsTrigger>
+          <TabsTrigger value="leave">Leave Balances</TabsTrigger>
           <TabsTrigger value="holidays">Holidays</TabsTrigger>
         </TabsList>
 
