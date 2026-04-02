@@ -2,7 +2,7 @@ import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useCompanySettings } from "@/hooks/use-company-settings";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, LogOut, ClipboardList, DollarSign, Settings, FileSpreadsheet } from "lucide-react";
+import { Building2, Users, LogOut, ClipboardList, DollarSign, Settings, FileSpreadsheet, LayoutDashboard } from "lucide-react";
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
@@ -56,6 +56,10 @@ const AdminLayout = () => {
           <NavLink to="/admin/payroll" className={linkClass}>
             <DollarSign className="h-4 w-4" />
             Payroll
+          </NavLink>
+          <NavLink to="/admin/management" className={linkClass}>
+            <LayoutDashboard className="h-4 w-4" />
+            Management
           </NavLink>
         </nav>
         <div className="p-4 border-t">

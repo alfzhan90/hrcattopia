@@ -14,6 +14,7 @@ import Staff from "@/pages/admin/Staff";
 import AttendanceRecords from "@/pages/admin/AttendanceRecords";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
+import Management from "@/pages/admin/Management";
 import StaffHome from "@/pages/staff/StaffHome";
 import StaffLogs from "@/pages/staff/StaffLogs";
 import StaffLeave from "@/pages/staff/StaffLeave";
@@ -84,6 +85,7 @@ const AppRoutes = () => (
       <Route path="records" element={<AttendanceRecords />} />
       <Route path="attendance" element={<LiveAttendance />} />
       <Route path="payroll" element={<Payroll />} />
+      <Route path="management" element={<Management />} />
     </Route>
     <Route path="*" element={<NotFound />} />
   </Routes>
