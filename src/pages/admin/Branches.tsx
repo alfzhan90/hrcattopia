@@ -293,7 +293,7 @@ const Branches = () => {
               </TableRow>
             ) : branches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                   No branches yet. Click "Add Branch" or click on the map to get started.
                 </TableCell>
               </TableRow>
