@@ -17,6 +17,7 @@ const Login = () => {
   const [forgotMode, setForgotMode] = useState(false);
   const { toast } = useToast();
   const { user, role, loading: authLoading, signOut } = useAuth();
+  const { data: companySettings } = useCompanySettings();
 
   if (!authLoading && user && role === "admin") {
     return <Navigate to="/admin/branches" replace />;
