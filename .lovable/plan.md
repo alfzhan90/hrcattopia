@@ -1,36 +1,38 @@
+## Step 2: Attendance Engine & Security
 
+### 1. Database Changes (Migration)
+- Add `regular_hours` and `ot_hours` (numeric) columns to `attendance_logs`
+- Add `device_fingerprint` text column alias — already have `device_id` on `staff_profiles`
 
-## Malaysian HR & Payroll Attendance System — Step 1
+### 2. Mobile Attendance Page (`/attendance`)
+- Staff-only route at `/attendance`
+- Two large buttons: **Check In** / **Check Out**
+- Live Google Map showing assigned branch geofence circle + staff's current position
+- Status display: current check-in state, distance from branch
 
-### Database Schema (Supabase)
-- **branches** table: id, name, address, latitude, longitude, radius_meters (default 100)
-- **staff_profiles** table: user_id (FK to auth.users), staff_id (auto-format STF-YYYY-XXX), name, ic_number, kwsp_number, socso_number, employment_type (Monthly-FT / Hourly-FT), base_rate, ot_rate_per_hour, branch_id (FK), device_id, al_balance, mc_balance
-- **attendance_logs** table: id, user_id, branch_id, check_in_time, check_out_time, check_in_lat, check_in_long, status (on_time / late / out_of_range)
-- **user_roles** table for admin/staff role separation
-- RLS policies on all tables with security definer helper functions
+### 3. GPS Geofencing Logic
+- Use `navigator.geolocation.getCurrentPosition()` on check-in
+- Haversine formula to calculate distance to assigned branch
+- If within `radius_meters` → allow check-in, save to `attendance_logs`
+- If outside → block with red alert showing distance and branch name
 
-### Authentication
-- Email/password login & signup
-- Role-based access: **admin** and **staff** roles
-- Protected routes — admin pages only accessible to admins
-- Auth context with session management
+### 4. Device Binding (One Phone Rule)
+- Generate device fingerprint from `navigator.userAgent` + screen dimensions + timezone
+- On first check-in: save fingerprint to `staff_profiles.device_id`
+- On subsequent check-ins: compare fingerprint — block if mismatch
+- Show security error message if device doesn't match
 
-### Branch Management UI (Admin)
-- Split layout: Google Maps on top/left, data table on bottom/right
-- Map shows branch markers with radius circles (geofence visualization)
-- Click map to set lat/lng when adding a new branch
-- CRUD forms: add, edit, delete branches with name, address, coordinates, radius
-- Branch list table with search/filter
+### 5. Admin Controls
+- **Staff page**: Add "Reset Device" button per staff member (clears `device_id`)
+- **Live Attendance dashboard**: New admin page showing currently checked-in staff with distance from branch
 
-### Pages & Navigation
-- `/login` — Auth page (login/signup)
-- `/admin/branches` — Branch management (map + table)
-- `/admin/staff` — Staff listing (placeholder for next step)
-- Sidebar navigation for admin sections
-- Redirect unauthenticated users to login
+### 6. Check-Out & Time Calculation
+- On check-out: calculate duration from `check_in_time`
+- `regular_hours` = min(duration, 8)
+- `ot_hours` = max(duration - 8, 0)
+- Save both to `attendance_logs`
 
-### Google Maps Integration
-- Interactive map with branch markers and geofence radius circles
-- Click-to-place for setting branch coordinates
-- Will use `@react-google-maps/api` library (you'll need to provide a Google Maps API key)
-
+### Pages & Routes
+- `/attendance` — Staff attendance page (staff role)
+- `/admin/attendance` — Live attendance dashboard (admin role)
+- Update `/admin/staff` — Full staff management with device reset

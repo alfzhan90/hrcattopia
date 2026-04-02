@@ -23,6 +23,8 @@ export type Database = {
           check_out_time: string | null
           created_at: string
           id: string
+          ot_hours: number
+          regular_hours: number
           status: Database["public"]["Enums"]["attendance_status"]
           user_id: string
         }
@@ -34,6 +36,8 @@ export type Database = {
           check_out_time?: string | null
           created_at?: string
           id?: string
+          ot_hours?: number
+          regular_hours?: number
           status?: Database["public"]["Enums"]["attendance_status"]
           user_id: string
         }
@@ -45,6 +49,8 @@ export type Database = {
           check_out_time?: string | null
           created_at?: string
           id?: string
+          ot_hours?: number
+          regular_hours?: number
           status?: Database["public"]["Enums"]["attendance_status"]
           user_id?: string
         }
