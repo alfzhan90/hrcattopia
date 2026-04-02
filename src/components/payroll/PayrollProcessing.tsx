@@ -352,8 +352,8 @@ const PayrollProcessing = () => {
     const s = staff.find((st) => st.id === profileId);
     if (!s) return;
     
-    const { jsPDF } = require("jspdf");
     const doc = new jsPDF();
+    const monthLabel = format(new Date(monthDate), "MMMM yyyy");
     const monthLabel = format(new Date(monthDate), "MMMM yyyy");
     
     doc.setFontSize(16);
