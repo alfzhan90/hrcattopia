@@ -49,7 +49,7 @@ const StaffPayslips = () => {
     if (!profile) return;
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
-      companyName: "CATTOPIA SDN BHD",
+      companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       periodLabel: period.label,
       month: format(new Date(run.month), "MMMM yyyy"),
       staffId: profile.staff_id, staffName: profile.name, icNumber: profile.ic_number,

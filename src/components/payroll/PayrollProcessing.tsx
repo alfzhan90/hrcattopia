@@ -315,7 +315,7 @@ const PayrollProcessing = () => {
 
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
     const blob = await generatePayslipPdf({
-      companyName: "CATTOPIA SDN BHD",
+      companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
       periodLabel: period.label,
       staffId: s.staff_id,
