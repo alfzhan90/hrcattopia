@@ -524,6 +524,7 @@ const PayrollProcessing = () => {
               <TableHead>OT</TableHead>
               <TableHead>Allowance</TableHead>
               <TableHead>Holiday</TableHead>
+              <TableHead>Mileage</TableHead>
               <TableHead>Gross</TableHead>
               <TableHead>EPF</TableHead>
               <TableHead>SOCSO</TableHead>
@@ -537,10 +538,10 @@ const PayrollProcessing = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {isLoading ? (
-              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+             {isLoading ? (
+              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : payrollRuns.length === 0 ? (
-              <TableRow><TableCell colSpan={15} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
             ) : (
               payrollRuns.map((run: any) => (
                 <TableRow key={run.id}>
@@ -554,6 +555,7 @@ const PayrollProcessing = () => {
                   <TableCell className="text-sm">{fmt(run.ot_pay)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.allowance)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.holiday_pay)}</TableCell>
+                  <TableCell className="text-sm">{Number(run.mileage_claim) > 0 ? fmt(run.mileage_claim) : "—"}</TableCell>
                   <TableCell className="text-sm font-medium">{fmt(run.gross_pay)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.epf_employee)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.socso_employee)}</TableCell>
