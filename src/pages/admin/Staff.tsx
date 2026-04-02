@@ -248,7 +248,7 @@ const Staff = () => {
                 )}
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? "Creating..." : "Create Staff"}
+                  {createMutation.isPending ? "Sending Invite..." : "Invite & Create Staff"}
                 </Button>
               </div>
             </form>
