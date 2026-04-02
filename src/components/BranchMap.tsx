@@ -98,4 +98,4 @@ const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) =>
   );
 };
 
-export default BranchMap;
+export default memo(BranchMap);
