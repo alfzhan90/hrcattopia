@@ -87,7 +87,7 @@ const Staff = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       toast({ title: "Staff member created" });
-      closeDialog();
+      closeDialog(true);
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -111,9 +111,9 @@ const Staff = () => {
     },
   });
 
-  const closeDialog = () => {
+  const closeDialog = (clearForm = false) => {
     setDialogOpen(false);
-    clearDraft();
+    if (clearForm) clearDraft();
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -227,7 +227,7 @@ const Staff = () => {
                     Draft saved
                   </span>
                 )}
-                <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
                 <Button type="submit" disabled={createMutation.isPending}>
                   {createMutation.isPending ? "Creating..." : "Create Staff"}
                 </Button>

@@ -80,7 +80,7 @@ const Branches = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
       toast({ title: editingBranch ? "Branch updated" : "Branch created" });
-      closeDialog();
+      closeDialog(true);
     },
     onError: (error: any) => {
       toast({
@@ -105,10 +105,10 @@ const Branches = () => {
     },
   });
 
-  const closeDialog = () => {
+  const closeDialog = (clearForm = false) => {
     setDialogOpen(false);
     setEditingBranch(null);
-    clearDraft();
+    if (clearForm) clearDraft();
   };
 
   const openEdit = (branch: Branch) => {
@@ -144,7 +144,7 @@ const Branches = () => {
           <h1 className="text-2xl font-bold tracking-tight">Branch Management</h1>
           <p className="text-muted-foreground">Manage your company branches and geofence areas.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setDialogOpen(true); }}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setEditingBranch(null); } else setDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -219,7 +219,7 @@ const Branches = () => {
                     Draft saved
                   </span>
                 )}
-                <Button type="button" variant="outline" onClick={closeDialog}>
+                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingBranch(null); }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saveMutation.isPending}>
