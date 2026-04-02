@@ -178,7 +178,23 @@ const PayrollProcessing = () => {
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
         const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
-        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction - lateDeduction) * 100) / 100;
+
+        // Mileage claim for Area Managers (RM0.80/km)
+        let mileageClaim = 0;
+        if (s.employment_type === "Area-Manager") {
+          const { data: visits } = await supabase
+            .from("branch_visits")
+            .select("distance_from_previous_km")
+            .eq("staff_profile_id", s.id)
+            .gte("visited_at", format(start, "yyyy-MM-dd"))
+            .lte("visited_at", format(end, "yyyy-MM-dd'T'23:59:59"));
+          if (visits) {
+            const totalKm = visits.reduce((sum: number, v: any) => sum + Number(v.distance_from_previous_km), 0);
+            mileageClaim = Math.round(totalKm * 0.80 * 100) / 100;
+          }
+        }
+
+        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
@@ -194,6 +210,7 @@ const PayrollProcessing = () => {
           allowance: 0,
           commission: 0,
           holiday_pay: holidayPay,
+          mileage_claim: mileageClaim,
           gross_pay: grossPay,
           epf_employee: epfEmployee,
           epf_employer: epfEmployer,
