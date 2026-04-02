@@ -114,9 +114,6 @@ const Staff = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     clearDraft();
-      branch_id: "",
-      user_id: "",
-    });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
