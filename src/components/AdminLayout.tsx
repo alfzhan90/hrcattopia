@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Building2, Users, LogOut, LayoutDashboard } from "lucide-react";
+import { Building2, Users, LogOut, ClipboardList } from "lucide-react";
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
@@ -29,6 +29,10 @@ const AdminLayout = () => {
           <NavLink to="/admin/staff" className={linkClass}>
             <Users className="h-4 w-4" />
             Staff
+          </NavLink>
+          <NavLink to="/admin/attendance" className={linkClass}>
+            <ClipboardList className="h-4 w-4" />
+            Live Attendance
           </NavLink>
         </nav>
         <div className="p-4 border-t">

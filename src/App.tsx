@@ -9,6 +9,8 @@ import AdminLayout from "@/components/AdminLayout";
 import Login from "@/pages/Login";
 import Branches from "@/pages/admin/Branches";
 import Staff from "@/pages/admin/Staff";
+import LiveAttendance from "@/pages/admin/LiveAttendance";
+import Attendance from "@/pages/Attendance";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -24,6 +26,14 @@ const App = () => (
             <Route path="/login" element={<Login />} />
             <Route path="/" element={<Navigate to="/admin/branches" replace />} />
             <Route
+              path="/attendance"
+              element={
+                <ProtectedRoute>
+                  <Attendance />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin"
               element={
                 <ProtectedRoute requiredRole="admin">
@@ -33,6 +43,7 @@ const App = () => (
             >
               <Route path="branches" element={<Branches />} />
               <Route path="staff" element={<Staff />} />
+              <Route path="attendance" element={<LiveAttendance />} />
             </Route>
             <Route path="*" element={<NotFound />} />
           </Routes>
