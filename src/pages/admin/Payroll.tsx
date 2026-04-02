@@ -28,6 +28,9 @@ const Payroll = () => {
         <TabsContent value="payroll" className="mt-4">
           <PayrollProcessing />
         </TabsContent>
+        <TabsContent value="approval" className="mt-4">
+          <LeaveApprovalInbox />
+        </TabsContent>
         <TabsContent value="attendance" className="mt-4">
           <AttendanceCorrection />
         </TabsContent>

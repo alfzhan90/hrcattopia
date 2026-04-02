@@ -155,11 +155,16 @@ const StaffDashboard = () => {
           </Card>
         </div>
 
-        <Tabs defaultValue="payslips">
+        <Tabs defaultValue="leave">
           <TabsList>
+            <TabsTrigger value="leave">Leave</TabsTrigger>
             <TabsTrigger value="payslips">Payslips</TabsTrigger>
             <TabsTrigger value="attendance">Attendance History</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="leave" className="mt-4">
+            <LeaveRequestForm />
+          </TabsContent>
 
           <TabsContent value="payslips" className="mt-4">
             <div className="rounded-lg border">
