@@ -1,5 +1,5 @@
 import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/api";
-import { useCallback, useState } from "react";
+import { useCallback, useState, memo } from "react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Branch = Tables<"branches">;
@@ -98,4 +98,4 @@ const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) =>
   );
 };
 
-export default BranchMap;
+export default memo(BranchMap);

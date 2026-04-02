@@ -13,7 +13,15 @@ import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Attendance from "@/pages/Attendance";
 import NotFound from "./pages/NotFound.tsx";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+    },
+  },
+});
 
 const HomeRedirect = () => {
   const { user, role, loading } = useAuth();
