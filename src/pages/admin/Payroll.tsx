@@ -5,6 +5,8 @@ import LeaveManagement from "@/components/payroll/LeaveManagement";
 import HolidayCalendar from "@/components/payroll/HolidayCalendar";
 import PayrollProcessing from "@/components/payroll/PayrollProcessing";
 import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
+import BulkPayrollImporter from "@/components/payroll/BulkPayrollImporter";
+import YtdSummary from "@/components/payroll/YtdSummary";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
@@ -17,8 +19,10 @@ const Payroll = () => {
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList>
+        <TabsList className="flex-wrap">
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
+          <TabsTrigger value="ytd">YTD Summary</TabsTrigger>
+          <TabsTrigger value="import">Import History</TabsTrigger>
           <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
           <TabsTrigger value="leave">Leave Balances</TabsTrigger>
@@ -27,6 +31,12 @@ const Payroll = () => {
 
         <TabsContent value="payroll" className="mt-4">
           <PayrollProcessing />
+        </TabsContent>
+        <TabsContent value="ytd" className="mt-4">
+          <YtdSummary />
+        </TabsContent>
+        <TabsContent value="import" className="mt-4">
+          <BulkPayrollImporter />
         </TabsContent>
         <TabsContent value="approval" className="mt-4">
           <LeaveApprovalInbox />
