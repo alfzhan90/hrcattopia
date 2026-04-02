@@ -80,7 +80,7 @@ const Branches = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["branches"] });
       toast({ title: editingBranch ? "Branch updated" : "Branch created" });
-      closeDialog();
+      closeDialog(true);
     },
     onError: (error: any) => {
       toast({
