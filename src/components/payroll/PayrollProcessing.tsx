@@ -385,6 +385,8 @@ const PayrollProcessing = () => {
                 <TableHead>EL</TableHead>
                 <TableHead>UPL</TableHead>
                 <TableHead>MIA</TableHead>
+                <TableHead>Late</TableHead>
+                <TableHead>Late Ded.</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -408,6 +410,29 @@ const PayrollProcessing = () => {
                       <span className="text-muted-foreground">0</span>
                     )}
                   </TableCell>
+                  <TableCell>
+                    {summary.lateCount > 0 ? (
+                      <div>
+                        <span className="text-destructive font-medium">{summary.lateCount}x</span>
+                        <span className="text-xs text-muted-foreground ml-1">({summary.lateMinutes}min)</span>
+                        {summary.lateCount > 3 && (
+                          <div className="mt-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-6"
+                              onClick={() => generateWarningLetter(profileId, summary.lateCount)}
+                            >
+                              ⚠️ Warning Letter
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-sm">{fmt(summary.lateDeduction)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
