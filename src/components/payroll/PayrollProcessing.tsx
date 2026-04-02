@@ -369,6 +369,49 @@ const PayrollProcessing = () => {
         </div>
       </div>
 
+      {/* Monthly Attendance Summary */}
+      {Object.keys(monthlySummary).length > 0 && (
+        <div className="rounded-lg border overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Staff</TableHead>
+                <TableHead>Days Worked</TableHead>
+                <TableHead>AL</TableHead>
+                <TableHead>MC</TableHead>
+                <TableHead>EL</TableHead>
+                <TableHead>UPL</TableHead>
+                <TableHead>MIA</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {Object.entries(monthlySummary).map(([profileId, summary]) => (
+                <TableRow key={profileId}>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium text-sm">{getStaffName(profileId)}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{getStaffId(profileId)}</p>
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium">{summary.daysWorked}</TableCell>
+                  <TableCell>{summary.al}</TableCell>
+                  <TableCell>{summary.mc}</TableCell>
+                  <TableCell>{summary.el}</TableCell>
+                  <TableCell>{summary.upl}</TableCell>
+                  <TableCell>
+                    {summary.mia > 0 ? (
+                      <Badge variant="destructive">{summary.mia}</Badge>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
       <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
