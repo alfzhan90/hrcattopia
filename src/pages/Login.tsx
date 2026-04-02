@@ -100,7 +100,12 @@ const Login = () => {
     <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl">HR & Payroll System</CardTitle>
+          {companySettings?.logo_url && (
+            <div className="flex justify-center mb-4">
+              <img src={companySettings.logo_url} alt="Company Logo" className="h-16 w-auto object-contain" />
+            </div>
+          )}
+          <CardTitle className="text-2xl">{companySettings?.company_name || "HR & Payroll System"}</CardTitle>
           <CardDescription>
             {forgotMode ? "Reset your password" : isSignUp ? "Create an account" : "Sign in to your account"}
           </CardDescription>
