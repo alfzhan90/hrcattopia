@@ -46,36 +46,61 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     let mounted = true;
+    let resolved = false;
 
-    const syncAuthState = async (nextSession: Session | null) => {
+    const finishLoading = () => {
+      if (mounted && !resolved) {
+        resolved = true;
+        setLoading(false);
+      }
+    };
+
+    // Safety timeout — never stay loading forever
+    const timeout = setTimeout(finishLoading, 5000);
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
       if (!mounted) return;
 
       setSession(nextSession);
       setUser(nextSession?.user ?? null);
 
       if (nextSession?.user) {
-        await fetchRole(nextSession.user.id);
+        try {
+          await fetchRole(nextSession.user.id);
+        } catch {
+          setRole(null);
+        }
       } else {
         setRole(null);
       }
 
-      if (mounted) {
-        setLoading(false);
-      }
-    };
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      await syncAuthState(nextSession);
+      finishLoading();
     });
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      await syncAuthState(session);
+    supabase.auth.getSession().then(async ({ data: { session: s } }) => {
+      if (!mounted || resolved) return;
+
+      setSession(s);
+      setUser(s?.user ?? null);
+
+      if (s?.user) {
+        try {
+          await fetchRole(s.user.id);
+        } catch {
+          setRole(null);
+        }
+      } else {
+        setRole(null);
+      }
+
+      finishLoading();
     });
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
