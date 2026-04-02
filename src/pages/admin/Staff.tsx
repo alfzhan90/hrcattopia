@@ -68,31 +68,22 @@ const Staff = () => {
       const token = sessionData.session?.access_token;
       if (!token) throw new Error("Not authenticated");
 
-      const res = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          },
-          body: JSON.stringify({
-            email: values.email,
-            name: values.name,
-            ic_number: values.ic_number,
-            kwsp_number: values.kwsp_number || null,
-            socso_number: values.socso_number || null,
-            employment_type: values.employment_type,
-            base_rate: values.base_rate,
-            ot_rate_per_hour: values.ot_rate_per_hour,
-            branch_id: values.branch_id || null,
-          }),
-        }
-      );
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.error || "Failed to invite staff");
-      return result;
+      const { data, error } = await supabase.functions.invoke("invite-staff", {
+        body: {
+          email: values.email,
+          name: values.name,
+          ic_number: values.ic_number,
+          kwsp_number: values.kwsp_number || null,
+          socso_number: values.socso_number || null,
+          employment_type: values.employment_type,
+          base_rate: values.base_rate,
+          ot_rate_per_hour: values.ot_rate_per_hour,
+          branch_id: values.branch_id || null,
+        },
+      });
+      if (error) throw new Error(error.message || "Failed to invite staff");
+      if (data?.error) throw new Error(data.error);
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
