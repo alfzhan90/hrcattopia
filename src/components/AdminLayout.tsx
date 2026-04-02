@@ -6,6 +6,7 @@ import { Building2, Users, LogOut, ClipboardList, DollarSign, Settings, FileSpre
 
 const AdminLayout = () => {
   const { user, signOut } = useAuth();
+  const { data: companySettings } = useCompanySettings();
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
