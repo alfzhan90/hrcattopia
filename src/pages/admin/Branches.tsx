@@ -144,7 +144,7 @@ const Branches = () => {
           <h1 className="text-2xl font-bold tracking-tight">Branch Management</h1>
           <p className="text-muted-foreground">Manage your company branches and geofence areas.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) closeDialog(); else setDialogOpen(true); }}>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setEditingBranch(null); } else setDialogOpen(true); }}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
