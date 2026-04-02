@@ -14,6 +14,7 @@ import { format } from "date-fns";
 const StaffPayslips = () => {
   const { user } = useAuth();
   const [preview, setPreview] = useState<any>(null);
+  const { data: companySettings } = useCompanySettings();
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
