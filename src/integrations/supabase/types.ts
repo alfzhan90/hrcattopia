@@ -76,6 +76,54 @@ export type Database = {
           },
         ]
       }
+      branch_visits: {
+        Row: {
+          branch_id: string
+          check_in_lat: number | null
+          check_in_long: number | null
+          created_at: string
+          distance_from_previous_km: number
+          id: string
+          staff_profile_id: string
+          visited_at: string
+        }
+        Insert: {
+          branch_id: string
+          check_in_lat?: number | null
+          check_in_long?: number | null
+          created_at?: string
+          distance_from_previous_km?: number
+          id?: string
+          staff_profile_id: string
+          visited_at?: string
+        }
+        Update: {
+          branch_id?: string
+          check_in_lat?: number | null
+          check_in_long?: number | null
+          created_at?: string
+          distance_from_previous_km?: number
+          id?: string
+          staff_profile_id?: string
+          visited_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_visits_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_visits_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string
@@ -218,6 +266,7 @@ export type Database = {
           holiday_pay: number
           id: string
           late_deduction: number
+          mileage_claim: number
           month: string
           net_pay: number
           ot_pay: number
@@ -242,6 +291,7 @@ export type Database = {
           holiday_pay?: number
           id?: string
           late_deduction?: number
+          mileage_claim?: number
           month: string
           net_pay?: number
           ot_pay?: number
@@ -266,6 +316,7 @@ export type Database = {
           holiday_pay?: number
           id?: string
           late_deduction?: number
+          mileage_claim?: number
           month?: string
           net_pay?: number
           ot_pay?: number
@@ -325,6 +376,7 @@ export type Database = {
           mc_balance: number
           name: string
           ot_rate_per_hour: number
+          privacy_tracking_enabled: boolean
           socso_number: string | null
           staff_id: string
           updated_at: string
@@ -343,6 +395,7 @@ export type Database = {
           mc_balance?: number
           name: string
           ot_rate_per_hour?: number
+          privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id: string
           updated_at?: string
@@ -361,6 +414,7 @@ export type Database = {
           mc_balance?: number
           name?: string
           ot_rate_per_hour?: number
+          privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id?: string
           updated_at?: string
@@ -410,7 +464,7 @@ export type Database = {
     Enums: {
       app_role: "admin" | "staff"
       attendance_status: "on_time" | "late" | "out_of_range"
-      employment_type: "Monthly-FT" | "Hourly-FT"
+      employment_type: "Monthly-FT" | "Hourly-FT" | "Area-Manager"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "AL" | "MC" | "UPL" | "EL"
       payroll_status: "draft" | "released"
@@ -543,7 +597,7 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "staff"],
       attendance_status: ["on_time", "late", "out_of_range"],
-      employment_type: ["Monthly-FT", "Hourly-FT"],
+      employment_type: ["Monthly-FT", "Hourly-FT", "Area-Manager"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["AL", "MC", "UPL", "EL"],
       payroll_status: ["draft", "released"],
