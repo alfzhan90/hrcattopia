@@ -173,7 +173,7 @@ const PayrollProcessing = () => {
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
-        const uplDeduction = calcUplDeduction(basicPay, uplDays);
+        const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
         const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
