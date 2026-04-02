@@ -248,6 +248,15 @@ const StaffHome = () => {
         </Button>
       </div>
 
+      {/* Missed Clock-Out Warning */}
+      {missedClockOut && (
+        <Alert variant="destructive" className="rounded-xl">
+          <AlertDescription className="text-sm">
+            ⚠️ You missed a Clock Out on {format(new Date(missedClockOut.check_in_time), "dd MMM yyyy")}. Please contact Admin to rectify your hours.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Attendance Card */}
       <Card className="overflow-hidden">
         <CardContent className="p-5 space-y-4">
