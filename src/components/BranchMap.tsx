@@ -85,6 +85,15 @@ const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) =>
           />
         </div>
       ))}
+      {pendingLocation && (
+        <Marker
+          position={pendingLocation}
+          title="Selected location (unsaved)"
+          icon={{
+            url: "http://maps.google.com/mapfiles/ms/icons/blue-dot.png",
+          }}
+        />
+      )}
     </GoogleMap>
   );
 };
