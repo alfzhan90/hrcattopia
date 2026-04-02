@@ -24,6 +24,7 @@ type Branch = Tables<"branches">;
 
 const defaultStaffForm = {
   name: "",
+  email: "",
   ic_number: "",
   kwsp_number: "",
   socso_number: "",
@@ -31,7 +32,6 @@ const defaultStaffForm = {
   base_rate: "0",
   ot_rate_per_hour: "0",
   branch_id: "",
-  user_id: "",
 };
 
 const Staff = () => {
