@@ -64,29 +64,39 @@ const Staff = () => {
 
   const createMutation = useMutation({
     mutationFn: async (values: typeof form) => {
-      const { error } = await supabase.from("staff_profiles").insert({
-        name: values.name,
-        ic_number: values.ic_number,
-        kwsp_number: values.kwsp_number || null,
-        socso_number: values.socso_number || null,
-        employment_type: values.employment_type as "Monthly-FT" | "Hourly-FT",
-        base_rate: parseFloat(values.base_rate),
-        ot_rate_per_hour: parseFloat(values.ot_rate_per_hour),
-        branch_id: values.branch_id || null,
-        user_id: values.user_id,
-        staff_id: "auto", // trigger will override
-      });
-      if (error) throw error;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Not authenticated");
 
-      // Also assign staff role
-      await supabase.from("user_roles").insert({
-        user_id: values.user_id,
-        role: "staff" as const,
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/invite-staff`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            email: values.email,
+            name: values.name,
+            ic_number: values.ic_number,
+            kwsp_number: values.kwsp_number || null,
+            socso_number: values.socso_number || null,
+            employment_type: values.employment_type,
+            base_rate: values.base_rate,
+            ot_rate_per_hour: values.ot_rate_per_hour,
+            branch_id: values.branch_id || null,
+          }),
+        }
+      );
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.error || "Failed to invite staff");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
-      toast({ title: "Staff member created" });
+      toast({ title: "Staff invited", description: "An invitation email has been sent." });
       closeDialog(true);
     },
     onError: (error: any) => {
