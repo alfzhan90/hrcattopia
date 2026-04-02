@@ -22,7 +22,7 @@ const Login = () => {
   }
 
   if (!authLoading && user && role === "staff") {
-    return <Navigate to="/attendance" replace />;
+    return <Navigate to="/staff/dashboard" replace />;
   }
 
   if (!authLoading && user && !role) {
