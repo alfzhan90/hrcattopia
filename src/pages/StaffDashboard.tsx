@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, LogOut, Calendar, Clock } from "lucide-react";
+import LeaveRequestForm from "@/components/leave/LeaveRequestForm";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
