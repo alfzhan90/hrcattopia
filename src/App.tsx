@@ -15,7 +15,7 @@ import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
 
-const AppRoutes = () => {
+const HomeRedirect = () => {
   const { user, role, loading } = useAuth();
 
   if (loading) {
@@ -26,40 +26,38 @@ const AppRoutes = () => {
     );
   }
 
-  const homeRedirect = !user
-    ? "/login"
-    : role === "admin"
-      ? "/admin/branches"
-      : "/attendance";
-
-  return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
-      <Route path="/" element={<Navigate to={homeRedirect} replace />} />
-      <Route
-        path="/attendance"
-        element={
-          <ProtectedRoute>
-            <Attendance />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/admin"
-        element={
-          <ProtectedRoute requiredRole="admin">
-            <AdminLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route path="branches" element={<Branches />} />
-        <Route path="staff" element={<Staff />} />
-        <Route path="attendance" element={<LiveAttendance />} />
-      </Route>
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
+  if (!user) return <Navigate to="/login" replace />;
+  if (role === "admin") return <Navigate to="/admin/branches" replace />;
+  return <Navigate to="/attendance" replace />;
 };
+
+const AppRoutes = () => (
+  <Routes>
+    <Route path="/login" element={<Login />} />
+    <Route path="/" element={<HomeRedirect />} />
+    <Route
+      path="/attendance"
+      element={
+        <ProtectedRoute>
+          <Attendance />
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/admin"
+      element={
+        <ProtectedRoute requiredRole="admin">
+          <AdminLayout />
+        </ProtectedRoute>
+      }
+    >
+      <Route path="branches" element={<Branches />} />
+      <Route path="staff" element={<Staff />} />
+      <Route path="attendance" element={<LiveAttendance />} />
+    </Route>
+    <Route path="*" element={<NotFound />} />
+  </Routes>
+);
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
