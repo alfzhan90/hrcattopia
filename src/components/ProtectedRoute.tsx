@@ -27,7 +27,15 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   }
 
   if (requiredRole && role !== requiredRole) {
-    return <Navigate to="/" replace />;
+    // Staff trying to access admin → redirect to staff dashboard
+    if (role === "staff" && requiredRole === "admin") {
+      return <Navigate to="/staff/dashboard" replace />;
+    }
+    // Admin trying to access staff-only → redirect to admin
+    if (role === "admin") {
+      return <Navigate to="/admin/branches" replace />;
+    }
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
