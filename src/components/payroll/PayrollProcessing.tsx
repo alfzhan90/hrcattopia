@@ -95,7 +95,7 @@ const PayrollProcessing = () => {
 
       const holidayDates = new Map(holidays.map((h: any) => [h.date, h.multiplier]));
 
-      // Calculate working days in the month (exclude weekends & public holidays)
+      // Calculate working days in pay period (exclude weekends & public holidays)
       const allDays = eachDayOfInterval({ start, end });
       const workingDays = allDays.filter(
         (d) => !isWeekend(d) && !holidayDates.has(format(d, "yyyy-MM-dd"))
