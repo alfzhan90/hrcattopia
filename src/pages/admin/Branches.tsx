@@ -233,7 +233,15 @@ const Branches = () => {
 
       {/* Map */}
       <div className="rounded-lg border overflow-hidden" style={{ height: 400 }}>
-        <BranchMap branches={branches} onMapClick={handleMapClick} />
+        <BranchMap
+          branches={branches}
+          onMapClick={handleMapClick}
+          pendingLocation={
+            form.latitude && form.longitude && !editingBranch
+              ? { lat: parseFloat(form.latitude), lng: parseFloat(form.longitude) }
+              : null
+          }
+        />
       </div>
 
       {/* Table */}
