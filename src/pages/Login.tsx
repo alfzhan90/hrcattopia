@@ -18,8 +18,10 @@ const Login = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const { user, role } = useAuth();
+
   if (user) {
-    return <Navigate to="/admin/branches" replace />;
+    return <Navigate to={role === "admin" ? "/admin/branches" : "/attendance"} replace />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
