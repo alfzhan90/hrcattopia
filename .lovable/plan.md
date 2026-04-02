@@ -1,38 +1,36 @@
-## Step 2: Attendance Engine & Security
+## Payroll & Compliance Module — Implementation Plan
 
-### 1. Database Changes (Migration)
-- Add `regular_hours` and `ot_hours` (numeric) columns to `attendance_logs`
-- Add `device_fingerprint` text column alias — already have `device_id` on `staff_profiles`
+### 1. Database Changes (Single Migration)
+- **`public_holidays`** table: `id`, `name`, `date`, `multiplier` (2.0 or 3.0), `created_at`
+- **`leave_records`** table: `id`, `staff_profile_id`, `leave_type` (enum: AL, MC, UPL), `date`, `approved_by`, `created_at`
+- **`payroll_runs`** table: `id`, `month` (date), `staff_profile_id`, `basic_pay`, `ot_pay`, `allowance`, `commission`, `holiday_pay`, `gross_pay`, `epf_employee`, `epf_employer`, `socso_employee`, `socso_employer`, `eis_employee`, `eis_employer`, `pcb`, `upl_deduction`, `net_pay`, `status` (enum: draft, released), `released_at`, `created_at`
+- Enum: `leave_type` (AL, MC, UPL)
+- Enum: `payroll_status` (draft, released)
+- RLS: Admin full access on all new tables. Staff can view own payroll_runs when status='released'.
 
-### 2. Mobile Attendance Page (`/attendance`)
-- Staff-only route at `/attendance`
-- Two large buttons: **Check In** / **Check Out**
-- Live Google Map showing assigned branch geofence circle + staff's current position
-- Status display: current check-in state, distance from branch
+### 2. Admin Payroll Dashboard (`/admin/payroll`)
+- **Attendance Correction**: Table of attendance logs with inline edit for check-in/out times
+- **Leave Management**: Set/update AL & MC balances on staff_profiles; mark leave days (AL/MC/UPL)
+- **Holiday Calendar**: CRUD for public holidays with multiplier
+- **Payroll Processing**: Select month → calculate pay for all staff → review → release
+  - EPF: Employee 11%, Employer 13% (≤RM5k) or 12% (>RM5k)
+  - SOCSO Cat 1 + EIS 0.2% each with RM6k ceiling
+  - PCB: Manual input field
+  - Holiday multiplier applied automatically
+  - UPL auto-deducts from gross
 
-### 3. GPS Geofencing Logic
-- Use `navigator.geolocation.getCurrentPosition()` on check-in
-- Haversine formula to calculate distance to assigned branch
-- If within `radius_meters` → allow check-in, save to `attendance_logs`
-- If outside → block with red alert showing distance and branch name
+### 3. Staff Self-Service Portal (`/staff/payslips`)
+- View AL/MC balance
+- View past attendance history
+- View released payslips + download PDF
 
-### 4. Device Binding (One Phone Rule)
-- Generate device fingerprint from `navigator.userAgent` + screen dimensions + timezone
-- On first check-in: save fingerprint to `staff_profiles.device_id`
-- On subsequent check-ins: compare fingerprint — block if mismatch
-- Show security error message if device doesn't match
+### 4. PDF Payslip Generation
+- Company name header, Staff ID, IC, KWSP No, SOCSO No
+- Earnings breakdown: Basic + OT + Allowance + Commission + Holiday Pay
+- Deductions breakdown: EPF + SOCSO + EIS + PCB + UPL
+- Net Pay
 
-### 5. Admin Controls
-- **Staff page**: Add "Reset Device" button per staff member (clears `device_id`)
-- **Live Attendance dashboard**: New admin page showing currently checked-in staff with distance from branch
-
-### 6. Check-Out & Time Calculation
-- On check-out: calculate duration from `check_in_time`
-- `regular_hours` = min(duration, 8)
-- `ot_hours` = max(duration - 8, 0)
-- Save both to `attendance_logs`
-
-### Pages & Routes
-- `/attendance` — Staff attendance page (staff role)
-- `/admin/attendance` — Live attendance dashboard (admin role)
-- Update `/admin/staff` — Full staff management with device reset
+### 5. Routing & Navigation
+- Add `/admin/payroll` to AdminLayout sidebar
+- Add `/staff/dashboard` for staff self-service
+- Update navigation for staff role
