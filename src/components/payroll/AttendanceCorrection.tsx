@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 
 const AttendanceCorrection = () => {
   const { toast } = useToast();
@@ -18,6 +18,9 @@ const AttendanceCorrection = () => {
   const [editLog, setEditLog] = useState<any>(null);
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
+  const [editRestHours, setEditRestHours] = useState("");
+  const [editNetHours, setEditNetHours] = useState("");
+  const [editOtHours, setEditOtHours] = useState("");
 
   const { data: staffMap = {} } = useQuery({
     queryKey: ["staff-map-payroll"],
@@ -46,17 +49,34 @@ const AttendanceCorrection = () => {
     },
   });
 
+  // Auto-recalculate when check-in/out changes
+  const recalculate = (checkIn: string, checkOut: string) => {
+    if (!checkIn || !checkOut) return;
+    const totalHours = (new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 60 * 60);
+    if (totalHours <= 0) return;
+    const rest = calcRestHours(totalHours);
+    const net = calcNetHours(totalHours);
+    const ot = calcDailyOt(net);
+    setEditRestHours(rest.toFixed(2));
+    setEditNetHours(net.toFixed(2));
+    setEditOtHours(ot.toFixed(2));
+  };
+
   const updateMutation = useMutation({
-    mutationFn: async ({ id, checkIn, checkOut }: { id: string; checkIn: string; checkOut: string }) => {
+    mutationFn: async ({ id, checkIn, checkOut, restHours, netHours, otHours }: {
+      id: string; checkIn: string; checkOut: string;
+      restHours: number; netHours: number; otHours: number;
+    }) => {
       const checkInDate = new Date(checkIn);
       const updates: any = { check_in_time: checkInDate.toISOString() };
 
       if (checkOut) {
         const checkOutDate = new Date(checkOut);
-        const durationHours = (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60);
         updates.check_out_time = checkOutDate.toISOString();
-        updates.regular_hours = Math.round(Math.min(durationHours, 8) * 100) / 100;
-        updates.ot_hours = Math.round(Math.max(durationHours - 8, 0) * 100) / 100;
+        updates.rest_hours = Math.round(restHours * 100) / 100;
+        updates.net_hours = Math.round(netHours * 100) / 100;
+        updates.regular_hours = Math.round(Math.min(netHours, 8) * 100) / 100;
+        updates.ot_hours = Math.round(otHours * 100) / 100;
       }
 
       const { error } = await supabase.from("attendance_logs").update(updates).eq("id", id);
@@ -76,6 +96,19 @@ const AttendanceCorrection = () => {
     setEditLog(log);
     setEditCheckIn(format(new Date(log.check_in_time), "yyyy-MM-dd'T'HH:mm"));
     setEditCheckOut(log.check_out_time ? format(new Date(log.check_out_time), "yyyy-MM-dd'T'HH:mm") : "");
+    setEditRestHours(Number(log.rest_hours ?? 0).toFixed(2));
+    setEditNetHours(Number(log.net_hours ?? 0).toFixed(2));
+    setEditOtHours(Number(log.ot_hours ?? 0).toFixed(2));
+  };
+
+  const handleCheckInChange = (v: string) => {
+    setEditCheckIn(v);
+    recalculate(v, editCheckOut);
+  };
+
+  const handleCheckOutChange = (v: string) => {
+    setEditCheckOut(v);
+    recalculate(editCheckIn, v);
   };
 
   return (
@@ -87,14 +120,16 @@ const AttendanceCorrection = () => {
         </div>
       </div>
 
-      <div className="rounded-lg border">
+      <div className="rounded-lg border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Staff</TableHead>
               <TableHead>Check In</TableHead>
               <TableHead>Check Out</TableHead>
-              <TableHead>Regular Hrs</TableHead>
+              <TableHead>Total Hrs</TableHead>
+              <TableHead>Rest Hrs</TableHead>
+              <TableHead>Net Hrs</TableHead>
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="w-16">Edit</TableHead>
@@ -102,12 +137,15 @@ const AttendanceCorrection = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
             ) : logs.length === 0 ? (
-              <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No records for this date.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">No records for this date.</TableCell></TableRow>
             ) : (
               logs.map((log) => {
                 const staff = staffMap[log.user_id];
+                const totalHrs = log.check_out_time
+                  ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
+                  : 0;
                 return (
                   <TableRow key={log.id}>
                     <TableCell>
@@ -118,7 +156,9 @@ const AttendanceCorrection = () => {
                     </TableCell>
                     <TableCell>{new Date(log.check_in_time).toLocaleTimeString()}</TableCell>
                     <TableCell>{log.check_out_time ? new Date(log.check_out_time).toLocaleTimeString() : "—"}</TableCell>
-                    <TableCell>{Number(log.regular_hours).toFixed(2)}</TableCell>
+                    <TableCell>{totalHrs.toFixed(2)}</TableCell>
+                    <TableCell>{Number(log.rest_hours ?? 0).toFixed(2)}</TableCell>
+                    <TableCell>{Number(log.net_hours ?? 0).toFixed(2)}</TableCell>
                     <TableCell>{Number(log.ot_hours).toFixed(2)}</TableCell>
                     <TableCell>{log.status}</TableCell>
                     <TableCell>
@@ -138,18 +178,42 @@ const AttendanceCorrection = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Edit Attendance</DialogTitle></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Check In</Label>
-              <Input type="datetime-local" value={editCheckIn} onChange={(e) => setEditCheckIn(e.target.value)} />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Check In</Label>
+                <Input type="datetime-local" value={editCheckIn} onChange={(e) => handleCheckInChange(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Check Out</Label>
+                <Input type="datetime-local" value={editCheckOut} onChange={(e) => handleCheckOutChange(e.target.value)} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label>Check Out</Label>
-              <Input type="datetime-local" value={editCheckOut} onChange={(e) => setEditCheckOut(e.target.value)} />
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label>Rest Hours</Label>
+                <Input type="number" step="0.01" value={editRestHours} onChange={(e) => setEditRestHours(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>Net Hours</Label>
+                <Input type="number" step="0.01" value={editNetHours} onChange={(e) => setEditNetHours(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label>OT Hours</Label>
+                <Input type="number" step="0.01" value={editOtHours} onChange={(e) => setEditOtHours(e.target.value)} />
+              </div>
             </div>
+            <p className="text-xs text-muted-foreground">Rest = 1hr per 5hrs worked. Net = Total − Rest. OT = Net − 8. You can override these manually.</p>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditLog(null)}>Cancel</Button>
               <Button
-                onClick={() => editLog && updateMutation.mutate({ id: editLog.id, checkIn: editCheckIn, checkOut: editCheckOut })}
+                onClick={() => editLog && updateMutation.mutate({
+                  id: editLog.id,
+                  checkIn: editCheckIn,
+                  checkOut: editCheckOut,
+                  restHours: parseFloat(editRestHours) || 0,
+                  netHours: parseFloat(editNetHours) || 0,
+                  otHours: parseFloat(editOtHours) || 0,
+                })}
                 disabled={updateMutation.isPending}
               >
                 {updateMutation.isPending ? "Saving..." : "Save"}

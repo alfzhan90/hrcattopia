@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
-import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction } from "@/lib/payroll";
+import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isWeekend } from "date-fns";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachWeekOfInterval, isSameWeek } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -101,24 +101,51 @@ const PayrollProcessing = () => {
         const staffLeave = (leaveRecords ?? []).filter((lr: any) => lr.staff_profile_id === s.id);
         const uplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
 
-        // Calculate hours
-        let totalRegular = 0;
-        let totalOt = 0;
-        let holidayHours = 0;
+        const basicPay = Number(s.base_rate);
+        const hourlyRate = calcHourlyRate(basicPay);
+
+        let totalDailyOt = 0;
+        let holidayPay = 0;
+
+        // Group logs by week for weekly OT calculation
+        const weeklyNetHours: Record<string, number> = {};
 
         staffLogs.forEach((log) => {
           const logDate = format(new Date(log.check_in_time), "yyyy-MM-dd");
+          const weekKey = format(startOfWeek(new Date(log.check_in_time), { weekStartsOn: 1 }), "yyyy-MM-dd");
           const multiplier = holidayDates.get(logDate);
+
+          // Use stored net_hours if available, otherwise calculate
+          const totalHrs = log.check_out_time
+            ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
+            : 0;
+          const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
+
           if (multiplier) {
-            holidayHours += (Number(log.regular_hours) + Number(log.ot_hours)) * (multiplier - 1);
+            // Public holiday: apply multiplier to ALL hours worked (skip 8h/45h rules)
+            holidayPay += Math.round(netHrs * hourlyRate * multiplier * 100) / 100;
+          } else {
+            // Normal day: daily OT = net hours > 8 at 1.5x
+            const dailyOt = calcDailyOt(netHrs);
+            totalDailyOt += dailyOt;
+
+            // Track weekly net hours (exclude holiday days)
+            weeklyNetHours[weekKey] = (weeklyNetHours[weekKey] || 0) + netHrs;
           }
-          totalRegular += Number(log.regular_hours);
-          totalOt += Number(log.ot_hours);
         });
 
-        const basicPay = Number(s.base_rate);
-        const otPay = Math.round(totalOt * Number(s.ot_rate_per_hour) * 100) / 100;
-        const holidayPay = Math.round(holidayHours * Number(s.ot_rate_per_hour) * 100) / 100;
+        // Weekly OT: total net hours > 45 in a week at 1.5x (extra on top of daily OT)
+        let weeklyExtraOt = 0;
+        Object.values(weeklyNetHours).forEach((weekNet) => {
+          if (weekNet > 45) {
+            weeklyExtraOt += weekNet - 45;
+          }
+        });
+
+        // OT pay = (daily OT + weekly extra OT) * hourly rate * 1.5
+        const totalOtHours = totalDailyOt + weeklyExtraOt;
+        const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
+
         const uplDeduction = calcUplDeduction(basicPay, uplDays);
         const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction) * 100) / 100;
 
