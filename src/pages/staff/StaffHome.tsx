@@ -123,7 +123,7 @@ const StaffHome = () => {
   });
 
   // Smart notifications
-  useSmartNotifications(user?.id, branch, activeLog?.check_in_time ?? null, !!activeLog);
+  useSmartNotifications(user?.id, activeBranch, activeLog?.check_in_time ?? null, !!activeLog);
 
   // Device binding
   useEffect(() => { setResolvedDeviceId(profile?.device_id ?? null); }, [profile?.device_id]);
@@ -150,11 +150,11 @@ const StaffHome = () => {
     const id = navigator.geolocation.watchPosition(
       (pos) => {
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (branch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude));
+        if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
       }, () => {}, { enableHighAccuracy: true }
     );
     return () => navigator.geolocation.clearWatch(id);
-  }, [branch]);
+  }, [activeBranch]);
 
   // Live timer
   useEffect(() => {
@@ -174,7 +174,8 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      if (!profile || !branch) throw new Error("No branch assigned.");
+      const checkBranch = isAreaManager ? activeBranch : branch;
+      if (!profile || !checkBranch) throw new Error(isAreaManager ? "Select a branch first." : "No branch assigned.");
 
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
@@ -188,23 +189,23 @@ const StaffHome = () => {
       }
 
       const pos = await getCurrentPosition();
-      const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, branch.latitude, branch.longitude);
-      if (dist > branch.radius_meters) {
-        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${branch.name}.`);
+      const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
+      if (dist > checkBranch.radius_meters) {
+        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
         throw new Error("Out of range");
       }
 
       let lateMinutes = 0;
       const now = new Date();
-      const [schedH, schedM] = (branch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
+      const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
       const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
-      const graceMs = ((branch as any).grace_period_minutes ?? 10) * 60 * 1000;
+      const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
       if (now > new Date(scheduledTime.getTime() + graceMs)) {
         lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
       }
 
       const { error } = await supabase.from("attendance_logs").insert({
-        user_id: user!.id, branch_id: branch.id,
+        user_id: user!.id, branch_id: checkBranch.id,
         check_in_lat: pos.coords.latitude, check_in_long: pos.coords.longitude,
         status: (lateMinutes > 0 ? "late" : "on_time") as any, late_minutes: lateMinutes,
       });
