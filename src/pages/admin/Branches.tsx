@@ -123,6 +123,8 @@ const Branches = () => {
       latitude: String(branch.latitude),
       longitude: String(branch.longitude),
       radius_meters: String(branch.radius_meters),
+      grace_period_minutes: String((branch as any).grace_period_minutes ?? 10),
+      scheduled_start: (branch as any).scheduled_start ?? "09:30",
     });
     setDialogOpen(true);
   };
