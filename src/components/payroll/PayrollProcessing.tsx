@@ -132,6 +132,17 @@ const PayrollProcessing = () => {
         const basicPay = Number(s.base_rate);
         const hourlyRate = calcHourlyRate(basicPay);
 
+        // Late deduction: (hourlyRate / 60) * lateMinutes (only non-waived)
+        let totalLateMinutes = 0;
+        let lateCount = 0;
+        staffLogs.forEach((log) => {
+          if (Number(log.late_minutes) > 0 && !log.late_waived) {
+            totalLateMinutes += Number(log.late_minutes);
+            lateCount++;
+          }
+        });
+        const lateDeduction = Math.round((hourlyRate / 60) * totalLateMinutes * 100) / 100;
+
         let totalDailyOt = 0;
         let holidayPay = 0;
 
@@ -143,39 +154,30 @@ const PayrollProcessing = () => {
           const weekKey = format(startOfWeek(new Date(log.check_in_time), { weekStartsOn: 1 }), "yyyy-MM-dd");
           const multiplier = holidayDates.get(logDate);
 
-          // Use stored net_hours if available, otherwise calculate
           const totalHrs = log.check_out_time
             ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
             : 0;
           const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
 
           if (multiplier) {
-            // Public holiday: apply multiplier to ALL hours worked (skip 8h/45h rules)
             holidayPay += Math.round(netHrs * hourlyRate * multiplier * 100) / 100;
           } else {
-            // Normal day: daily OT = net hours > 8 at 1.5x
             const dailyOt = calcDailyOt(netHrs);
             totalDailyOt += dailyOt;
-
-            // Track weekly net hours (exclude holiday days)
             weeklyNetHours[weekKey] = (weeklyNetHours[weekKey] || 0) + netHrs;
           }
         });
 
-        // Weekly OT: total net hours > 45 in a week at 1.5x (extra on top of daily OT)
         let weeklyExtraOt = 0;
         Object.values(weeklyNetHours).forEach((weekNet) => {
-          if (weekNet > 45) {
-            weeklyExtraOt += weekNet - 45;
-          }
+          if (weekNet > 45) weeklyExtraOt += weekNet - 45;
         });
 
-        // OT pay = (daily OT + weekly extra OT) * hourly rate * 1.5
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
         const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
-        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction) * 100) / 100;
+        const grossPay = Math.round((basicPay + otPay + holidayPay - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
