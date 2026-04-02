@@ -74,18 +74,17 @@ const PayrollProcessing = () => {
 
   const generateMutation = useMutation({
     mutationFn: async () => {
-      const start = startOfMonth(new Date(monthDate));
-      const end = endOfMonth(new Date(monthDate));
+      const { start, end } = payPeriod;
 
-      // Get attendance logs for the month
+      // Get attendance logs for the pay period (24th prev month – 23rd current month)
       const { data: allLogs, error: logError } = await supabase
         .from("attendance_logs")
         .select("*")
         .gte("check_in_time", format(start, "yyyy-MM-dd"))
-        .lte("check_in_time", format(end, "yyyy-MM-dd"));
+        .lte("check_in_time", format(end, "yyyy-MM-dd'T'23:59:59"));
       if (logError) throw logError;
 
-      // Get APPROVED leave records only
+      // Get APPROVED leave records only within pay period
       const { data: leaveRecords, error: leaveError } = await supabase
         .from("leave_records")
         .select("*")
