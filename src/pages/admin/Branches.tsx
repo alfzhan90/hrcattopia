@@ -24,6 +24,8 @@ const defaultBranchForm = {
   latitude: "",
   longitude: "",
   radius_meters: "100",
+  grace_period_minutes: "10",
+  scheduled_start: "09:30",
 };
 
 const Branches = () => {
