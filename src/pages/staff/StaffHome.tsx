@@ -253,7 +253,7 @@ const StaffHome = () => {
     return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>;
   }
 
-  const inRange = distance !== null && branch ? distance <= branch.radius_meters : null;
+  const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
@@ -262,7 +262,10 @@ const StaffHome = () => {
         <div>
           <p className="text-sm text-muted-foreground">{format(new Date(), "EEEE, d MMMM yyyy")}</p>
           <h1 className="text-xl font-bold">Welcome, {profile.name.split(" ")[0]}</h1>
-          <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
+            {isAreaManager && <Badge variant="secondary" className="text-[10px]">Area Manager</Badge>}
+          </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
           <LogOut className="h-5 w-5" />
@@ -276,6 +279,25 @@ const StaffHome = () => {
             ⚠️ You missed a Clock Out on {format(new Date(missedClockOut.check_in_time), "dd MMM yyyy")}. Please contact Admin to rectify your hours.
           </AlertDescription>
         </Alert>
+      )}
+
+      {/* Area Manager Branch Selector */}
+      {isAreaManager && !activeLog && (
+        <Card className="rounded-xl">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-medium">Select Branch to Check In</p>
+            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Choose any branch..." />
+              </SelectTrigger>
+              <SelectContent>
+                {allBranches.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
       )}
 
       {/* Attendance Card */}
@@ -321,7 +343,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending}
+              disabled={!!activeLog || checkInMutation.isPending || (isAreaManager && !selectedBranchId)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
@@ -339,6 +361,11 @@ const StaffHome = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Branch Visit Logger for Area Managers */}
+      {isAreaManager && profile && (
+        <BranchVisitLogger profileId={profile.id} />
+      )}
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
@@ -366,6 +393,11 @@ const StaffHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Privacy Disclaimer */}
+      <p className="text-[10px] text-muted-foreground text-center px-4 pb-4">
+        📍 Location is tracked for travel claims and safety during working hours only. GPS tracking occurs only when you tap Clock In or Log Visit.
+      </p>
     </div>
   );
 };
