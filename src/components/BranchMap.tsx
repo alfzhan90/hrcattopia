@@ -16,7 +16,7 @@ const defaultCenter = { lat: 3.1390, lng: 101.6869 }; // KL, Malaysia
 
 const mapContainerStyle = { width: "100%", height: "100%" };
 
-const BranchMap = ({ branches, onMapClick }: BranchMapProps) => {
+const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) => {
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: GOOGLE_MAPS_API_KEY,
   });
