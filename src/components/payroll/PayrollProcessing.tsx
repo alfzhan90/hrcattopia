@@ -538,6 +538,7 @@ const PayrollProcessing = () => {
                   <TableCell className="text-sm">{fmt(run.eis_employee)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.pcb)}</TableCell>
                   <TableCell className="text-sm">{fmt(run.upl_deduction)}</TableCell>
+                  <TableCell className="text-sm">{fmt(run.late_deduction ?? 0)}</TableCell>
                   <TableCell className="text-sm font-bold">{fmt(run.net_pay)}</TableCell>
                   <TableCell>
                     <Badge variant={run.status === "released" ? "default" : "secondary"}>
