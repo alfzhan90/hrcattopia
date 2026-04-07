@@ -29,8 +29,8 @@ const Login = () => {
 
   if (!authLoading && user && !role) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
-        <Card className="w-full max-w-md">
+      <div className="flex min-h-screen items-center justify-center bg-carbon px-4">
+        <Card className="w-full max-w-md border-carbon-light">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl">Account access pending</CardTitle>
             <CardDescription>
@@ -46,7 +46,6 @@ const Login = () => {
       </div>
     );
   }
-
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,12 +96,18 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-muted/50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          {companySettings?.logo_url && (
+    <div className="flex min-h-screen items-center justify-center bg-carbon px-4">
+      <Card className="w-full max-w-md bg-card border-0 shadow-2xl">
+        <CardHeader className="text-center pb-2">
+          {companySettings?.logo_url ? (
             <div className="flex justify-center mb-4">
               <img src={companySettings.logo_url} alt="Company Logo" className="h-16 w-auto object-contain" />
+            </div>
+          ) : (
+            <div className="flex justify-center mb-4">
+              <div className="gold-avatar h-16 w-16 text-2xl">
+                {(companySettings?.company_name || "HR")[0]}
+              </div>
             </div>
           )}
           <CardTitle className="text-2xl">{companySettings?.company_name || "HR & Payroll System"}</CardTitle>
@@ -121,6 +126,7 @@ const Login = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-12"
               />
             </div>
             {!forgotMode && (
@@ -134,10 +140,11 @@ const Login = () => {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={6}
+                  className="h-12"
                 />
               </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
+            <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={loading}>
               {loading ? "Loading..." : forgotMode ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
             </Button>
           </form>
