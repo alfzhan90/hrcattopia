@@ -310,6 +310,7 @@ const Management = () => {
                         <div className="flex items-center gap-1.5">
                           <p className="font-medium text-sm">{s?.name ?? "Unknown"}</p>
                           {s?.employment_type === "Area-Manager" && <Car className="h-3 w-3 text-amber-500" />}
+                          {s?.employment_type === "Freelancer" && <span className="h-3 w-3 rounded-full bg-orange-400 inline-block" />}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{s?.staff_id}</p>
                       </div>

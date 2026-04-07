@@ -255,6 +255,7 @@ const Staff = () => {
               <SelectItem value="Monthly-FT">Monthly Full-Time</SelectItem>
               <SelectItem value="Hourly-FT">Hourly Full-Time</SelectItem>
               <SelectItem value="Area-Manager">Area Manager</SelectItem>
+              <SelectItem value="Freelancer">Freelancer</SelectItem>
             </SelectContent>
           </Select>
         </div>

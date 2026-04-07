@@ -40,6 +40,7 @@ const StaffHome = () => {
   });
 
   const isAreaManager = profile?.employment_type === "Area-Manager";
+  const isFreelancer = profile?.employment_type === "Freelancer";
 
   const { data: branch } = useQuery({
     queryKey: ["my-branch", profile?.branch_id],
@@ -48,7 +49,18 @@ const StaffHome = () => {
       if (error) throw error;
       return data as Branch;
     },
-    enabled: !!profile?.branch_id && !isAreaManager,
+    enabled: !!profile?.branch_id && !isAreaManager && !isFreelancer,
+  });
+
+  // Freelancer: fetch all branches (like Area Manager, can select)
+  const { data: allBranchesFreelancer = [] } = useQuery({
+    queryKey: ["all-branches-freelancer"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").order("name");
+      if (error) throw error;
+      return data as Branch[];
+    },
+    enabled: isFreelancer,
   });
 
   // Area Manager: fetch all branches
@@ -65,6 +77,8 @@ const StaffHome = () => {
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
+    : isFreelancer
+    ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
     : branch ?? null;
 
   const { data: activeLog } = useQuery({
@@ -174,8 +188,8 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      const checkBranch = isAreaManager ? activeBranch : branch;
-      if (!profile || !checkBranch) throw new Error(isAreaManager ? "Select a branch first." : "No branch assigned.");
+      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
+      if (!profile || !checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned.");
 
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
@@ -195,13 +209,16 @@ const StaffHome = () => {
         throw new Error("Out of range");
       }
 
+      // No late penalty for freelancers, but flag unusual hours
       let lateMinutes = 0;
-      const now = new Date();
-      const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
-      const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
-      const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
-      if (now > new Date(scheduledTime.getTime() + graceMs)) {
-        lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
+      if (!isFreelancer) {
+        const now = new Date();
+        const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
+        const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
+        const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
+        if (now > new Date(scheduledTime.getTime() + graceMs)) {
+          lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
+        }
       }
 
       const { error } = await supabase.from("attendance_logs").insert({
@@ -265,6 +282,7 @@ const StaffHome = () => {
           <div className="flex items-center gap-2">
             <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
             {isAreaManager && <Badge variant="secondary" className="text-[10px]">Area Manager</Badge>}
+            {isFreelancer && <Badge variant="secondary" className="text-[10px]">Freelancer</Badge>}
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
@@ -281,8 +299,8 @@ const StaffHome = () => {
         </Alert>
       )}
 
-      {/* Area Manager Branch Selector */}
-      {isAreaManager && !activeLog && (
+      {/* Area Manager / Freelancer Branch Selector */}
+      {(isAreaManager || (isFreelancer && !profile?.branch_id)) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
             <p className="text-sm font-medium">Select Branch to Check In</p>
@@ -291,7 +309,7 @@ const StaffHome = () => {
                 <SelectValue placeholder="Choose any branch..." />
               </SelectTrigger>
               <SelectContent>
-                {allBranches.map((b) => (
+                {(isAreaManager ? allBranches : allBranchesFreelancer).map((b) => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -343,7 +361,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending || (isAreaManager && !selectedBranchId)}
+              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />

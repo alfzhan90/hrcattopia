@@ -15,10 +15,12 @@ import AttendanceRecords from "@/pages/admin/AttendanceRecords";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
 import Management from "@/pages/admin/Management";
+import Freelancers from "@/pages/admin/Freelancers";
 import StaffHome from "@/pages/staff/StaffHome";
 import StaffLogs from "@/pages/staff/StaffLogs";
 import StaffLeave from "@/pages/staff/StaffLeave";
 import StaffPayslips from "@/pages/staff/StaffPayslips";
+import StaffInvoices from "@/pages/staff/StaffInvoices";
 import StaffProfile from "@/pages/staff/StaffProfile";
 import ResetPassword from "@/pages/ResetPassword";
 import NotFound from "./pages/NotFound.tsx";
@@ -68,6 +70,7 @@ const AppRoutes = () => (
       <Route path="logs" element={<StaffLogs />} />
       <Route path="leave" element={<StaffLeave />} />
       <Route path="payslips" element={<StaffPayslips />} />
+      <Route path="invoices" element={<StaffInvoices />} />
       <Route path="profile" element={<StaffProfile />} />
     </Route>
     {/* Admin routes */}
@@ -85,6 +88,7 @@ const AppRoutes = () => (
       <Route path="records" element={<AttendanceRecords />} />
       <Route path="attendance" element={<LiveAttendance />} />
       <Route path="payroll" element={<Payroll />} />
+      <Route path="freelancers" element={<Freelancers />} />
       <Route path="management" element={<Management />} />
     </Route>
     <Route path="*" element={<NotFound />} />
