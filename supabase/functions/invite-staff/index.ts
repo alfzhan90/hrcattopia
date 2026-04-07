@@ -63,6 +63,9 @@ Deno.serve(async (req) => {
       base_rate,
       ot_rate_per_hour,
       branch_id,
+      phone_number,
+      bank_name,
+      bank_account_number,
     } = body;
 
     if (!email || !name || !ic_number) {
@@ -100,6 +103,9 @@ Deno.serve(async (req) => {
         base_rate: parseFloat(base_rate) || 0,
         ot_rate_per_hour: parseFloat(ot_rate_per_hour) || 0,
         branch_id: branch_id || null,
+        phone_number: phone_number || null,
+        bank_name: bank_name || null,
+        bank_account_number: bank_account_number || null,
         staff_id: "auto", // trigger overrides
       });
 
