@@ -196,6 +196,62 @@ export type Database = {
         }
         Relationships: []
       }
+      freelancer_invoices: {
+        Row: {
+          created_at: string
+          e_invoice_id: string | null
+          hourly_rate: number
+          id: string
+          invoice_number: string
+          month: string
+          payment_due_date: string | null
+          service_description: string
+          staff_profile_id: string
+          status: Database["public"]["Enums"]["invoice_status"]
+          total_hours: number
+          total_payable: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          e_invoice_id?: string | null
+          hourly_rate?: number
+          id?: string
+          invoice_number?: string
+          month: string
+          payment_due_date?: string | null
+          service_description?: string
+          staff_profile_id: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_hours?: number
+          total_payable?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          e_invoice_id?: string | null
+          hourly_rate?: number
+          id?: string
+          invoice_number?: string
+          month?: string
+          payment_due_date?: string | null
+          service_description?: string
+          staff_profile_id?: string
+          status?: Database["public"]["Enums"]["invoice_status"]
+          total_hours?: number
+          total_payable?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "freelancer_invoices_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leave_records: {
         Row: {
           approved_at: string | null
@@ -365,6 +421,8 @@ export type Database = {
       staff_profiles: {
         Row: {
           al_balance: number
+          bank_account_number: string | null
+          bank_name: string | null
           base_rate: number
           branch_id: string | null
           created_at: string
@@ -376,6 +434,7 @@ export type Database = {
           mc_balance: number
           name: string
           ot_rate_per_hour: number
+          phone_number: string | null
           privacy_tracking_enabled: boolean
           socso_number: string | null
           staff_id: string
@@ -384,6 +443,8 @@ export type Database = {
         }
         Insert: {
           al_balance?: number
+          bank_account_number?: string | null
+          bank_name?: string | null
           base_rate?: number
           branch_id?: string | null
           created_at?: string
@@ -395,6 +456,7 @@ export type Database = {
           mc_balance?: number
           name: string
           ot_rate_per_hour?: number
+          phone_number?: string | null
           privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id: string
@@ -403,6 +465,8 @@ export type Database = {
         }
         Update: {
           al_balance?: number
+          bank_account_number?: string | null
+          bank_name?: string | null
           base_rate?: number
           branch_id?: string | null
           created_at?: string
@@ -414,6 +478,7 @@ export type Database = {
           mc_balance?: number
           name?: string
           ot_rate_per_hour?: number
+          phone_number?: string | null
           privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id?: string
@@ -464,7 +529,12 @@ export type Database = {
     Enums: {
       app_role: "admin" | "staff"
       attendance_status: "on_time" | "late" | "out_of_range"
-      employment_type: "Monthly-FT" | "Hourly-FT" | "Area-Manager"
+      employment_type:
+        | "Monthly-FT"
+        | "Hourly-FT"
+        | "Area-Manager"
+        | "Freelancer"
+      invoice_status: "draft" | "issued" | "paid"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "AL" | "MC" | "UPL" | "EL"
       payroll_status: "draft" | "released"
@@ -597,7 +667,13 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "staff"],
       attendance_status: ["on_time", "late", "out_of_range"],
-      employment_type: ["Monthly-FT", "Hourly-FT", "Area-Manager"],
+      employment_type: [
+        "Monthly-FT",
+        "Hourly-FT",
+        "Area-Manager",
+        "Freelancer",
+      ],
+      invoice_status: ["draft", "issued", "paid"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["AL", "MC", "UPL", "EL"],
       payroll_status: ["draft", "released"],
