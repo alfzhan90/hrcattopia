@@ -177,7 +177,9 @@ const PayrollProcessing = () => {
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
-        const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
+        const calendarDays = getCalendarDaysForMonth(selectedMonth);
+        const dailyRateProrated = calcDailyRateProrated(basicPay, calendarDays);
+        const uplDeduction = calcUplDeduction(basicPay, totalUplDays, calendarDays);
 
         // Mileage claim for Area Managers (RM0.80/km)
         let mileageClaim = 0;
