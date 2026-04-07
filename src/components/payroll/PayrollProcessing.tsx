@@ -333,6 +333,9 @@ const PayrollProcessing = () => {
     const branch = branches.find((b: any) => b.id === s.branch_id);
 
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
+    const monthStr = format(new Date(run.month), "yyyy-MM");
+    const calendarDays = getCalendarDaysForMonth(monthStr);
+    const dailyRate = calcDailyRateProrated(Number(run.basic_pay), calendarDays);
     const blob = await generatePayslipPdf({
       companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
@@ -349,6 +352,7 @@ const PayrollProcessing = () => {
       allowance: Number(run.allowance),
       commission: Number(run.commission),
       holidayPay: Number(run.holiday_pay),
+      mileageClaim: Number(run.mileage_claim),
       grossPay: Number(run.gross_pay),
       epfEmployee: Number(run.epf_employee),
       epfEmployer: Number(run.epf_employer),
@@ -359,6 +363,9 @@ const PayrollProcessing = () => {
       pcb: Number(run.pcb),
       uplDeduction: Number(run.upl_deduction),
       netPay: Number(run.net_pay),
+      calendarDays,
+      dailyRate,
+      uplDays: monthlySummary[run.staff_profile_id]?.upl ?? 0,
     });
 
     const url = URL.createObjectURL(blob);
