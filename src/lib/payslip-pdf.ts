@@ -30,6 +30,10 @@ export interface PayslipData {
   pcb: number;
   uplDeduction: number;
   netPay: number;
+  // Proration info (Section 18A)
+  calendarDays?: number; // e.g. 30 for April
+  dailyRate?: number; // basicPay / calendarDays
+  uplDays?: number; // number of UPL days
 }
 
 export const generatePayslipPdf = async (data: PayslipData): Promise<Blob> => {
@@ -118,13 +122,17 @@ export const generatePayslipPdf = async (data: PayslipData): Promise<Blob> => {
     earnings.push(["Mileage Claim", data.mileageClaim]);
   }
 
-  const deductions = [
+  const deductions: [string, number][] = [
     ["EPF (Employee 11%)", data.epfEmployee],
     ["SOCSO (Employee)", data.socsoEmployee],
     ["EIS (Employee)", data.eisEmployee],
     ["PCB (Tax)", data.pcb],
-    ["Unpaid Leave", data.uplDeduction],
-  ] as const;
+  ];
+  if (data.uplDays && data.uplDays > 0 && data.calendarDays) {
+    deductions.push([`Unpaid Leave (${data.uplDays}d × RM${(data.dailyRate ?? 0).toFixed(2)})`, data.uplDeduction]);
+  } else {
+    deductions.push(["Unpaid Leave", data.uplDeduction]);
+  }
 
   const maxRows = Math.max(earnings.length, deductions.length);
   for (let i = 0; i < maxRows; i++) {
