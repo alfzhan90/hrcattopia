@@ -178,7 +178,11 @@ export const generatePayslipPdf = async (data: PayslipData): Promise<Blob> => {
   doc.text("Employer Contributions (not deducted from salary):", lm, y);
   y += 4;
   doc.text(`EPF Employer: ${fmt(data.epfEmployer)} | SOCSO Employer: ${fmt(data.socsoEmployer)} | EIS Employer: ${fmt(data.eisEmployer)}`, lm, y);
-  y += 8;
+  y += 6;
+  if (data.calendarDays && data.dailyRate) {
+    doc.text(`Proration (Section 18A): Daily Rate = RM${data.basicPay.toFixed(2)} ÷ ${data.calendarDays} days = RM${data.dailyRate.toFixed(2)}/day`, lm, y);
+    y += 6;
+  }
   doc.text("This is a computer-generated payslip. No signature required.", pw / 2, y, { align: "center" });
 
   return doc.output("blob");
