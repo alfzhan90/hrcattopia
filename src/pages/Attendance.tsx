@@ -14,7 +14,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type StaffProfile = Tables<"staff_profiles">;
 type Branch = Tables<"branches">;
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyCVQTyrQN4Dz07qZxHSV7QSF-riz2kDJMM";
 
 const Attendance = () => {
   const { user } = useAuth();

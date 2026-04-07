@@ -12,7 +12,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type AttendanceLog = Tables<"attendance_logs">;
 type Branch = Tables<"branches">;
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyCVQTyrQN4Dz07qZxHSV7QSF-riz2kDJMM";
 const mapContainerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 3.139, lng: 101.6869 };
 
