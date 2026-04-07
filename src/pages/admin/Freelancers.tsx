@@ -4,22 +4,96 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { Plus, Search, Pencil, FileText, Download } from "lucide-react";
 import { format } from "date-fns";
 import { getPayPeriod } from "@/lib/payroll";
 import { generateFreelancerInvoicePdf } from "@/lib/freelancer-invoice-pdf";
+import type { InvoiceLineItem } from "@/lib/freelancer-invoice-pdf";
 import { useCompanySettings } from "@/hooks/use-company-settings";
 import type { Tables as DBTables } from "@/integrations/supabase/types";
 
 type StaffProfile = DBTables<"staff_profiles">;
 type Branch = DBTables<"branches">;
+
+interface FreelancerExt extends StaffProfile {
+  phone_number?: string;
+  bank_name?: string;
+  bank_account_number?: string;
+  freelancer_ot_enabled?: boolean;
+}
+
+/** Compute itemized hours for a freelancer given their logs and holidays */
+function computeItemizedHours(
+  logs: any[],
+  holidays: { date: string; multiplier: number }[],
+  baseRate: number,
+  otEnabled: boolean
+) {
+  let standardHours = 0;
+  let otHours = 0;
+  let holidayHours = 0;
+  let holidayMultiplier = 2.0;
+
+  const holidayMap = new Map(holidays.map((h) => [h.date, h.multiplier]));
+
+  logs.forEach((log) => {
+    const netHours = Number(log.net_hours);
+    const logDate = log.check_in_time?.split("T")[0];
+    const mult = holidayMap.get(logDate);
+
+    if (mult) {
+      // All hours on a holiday get the holiday rate
+      holidayHours += netHours;
+      holidayMultiplier = mult; // use the last seen multiplier (they should be consistent)
+    } else if (otEnabled && netHours > 8) {
+      standardHours += 8;
+      otHours += netHours - 8;
+    } else {
+      standardHours += netHours;
+    }
+  });
+
+  const lineItems: InvoiceLineItem[] = [];
+  if (standardHours > 0) {
+    lineItems.push({
+      description: "Standard Hours (1.0x)",
+      hours: Math.round(standardHours * 100) / 100,
+      rate: baseRate,
+      amount: Math.round(standardHours * baseRate * 100) / 100,
+    });
+  }
+  if (otHours > 0) {
+    const otRate = baseRate * 1.5;
+    lineItems.push({
+      description: "Overtime Hours (1.5x)",
+      hours: Math.round(otHours * 100) / 100,
+      rate: Math.round(otRate * 100) / 100,
+      amount: Math.round(otHours * otRate * 100) / 100,
+    });
+  }
+  if (holidayHours > 0) {
+    const hRate = baseRate * holidayMultiplier;
+    lineItems.push({
+      description: `Public Holiday (${holidayMultiplier}x)`,
+      hours: Math.round(holidayHours * 100) / 100,
+      rate: Math.round(hRate * 100) / 100,
+      amount: Math.round(holidayHours * hRate * 100) / 100,
+    });
+  }
+
+  const totalHours = standardHours + otHours + holidayHours;
+  const totalPayable = lineItems.reduce((s, li) => s + li.amount, 0);
+
+  return { lineItems, totalHours: Math.round(totalHours * 100) / 100, totalPayable: Math.round(totalPayable * 100) / 100 };
+}
 
 const Freelancers = () => {
   const { toast } = useToast();
@@ -38,6 +112,7 @@ const Freelancers = () => {
   const [editForm, setEditForm] = useState<{
     id: string; name: string; ic_number: string; phone_number: string;
     bank_name: string; bank_account_number: string; base_rate: string; branch_id: string;
+    freelancer_ot_enabled: boolean;
   } | null>(null);
 
   const { data: freelancers = [], isLoading } = useQuery({
@@ -48,7 +123,7 @@ const Freelancers = () => {
         .eq("employment_type", "Freelancer")
         .order("name");
       if (error) throw error;
-      return data as (StaffProfile & { phone_number?: string; bank_name?: string; bank_account_number?: string })[];
+      return data as FreelancerExt[];
     },
   });
 
@@ -61,7 +136,20 @@ const Freelancers = () => {
     },
   });
 
-  // Invoices for current month
+  // Holidays for rate calculation
+  const period = getPayPeriod(selectedMonth);
+  const { data: holidays = [] } = useQuery({
+    queryKey: ["holidays-for-invoices", selectedMonth],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_holidays").select("date, multiplier")
+        .gte("date", period.start)
+        .lte("date", period.end);
+      if (error) throw error;
+      return data as { date: string; multiplier: number }[];
+    },
+  });
+
   const { data: invoices = [] } = useQuery({
     queryKey: ["freelancer-invoices", selectedMonth],
     queryFn: async () => {
@@ -74,8 +162,6 @@ const Freelancers = () => {
     },
   });
 
-  // Attendance logs for freelancers in current pay period
-  const period = getPayPeriod(selectedMonth);
   const { data: freelancerLogs = [] } = useQuery({
     queryKey: ["freelancer-logs", selectedMonth],
     queryFn: async () => {
@@ -126,6 +212,7 @@ const Freelancers = () => {
         bank_account_number: values.bank_account_number,
         base_rate: parseFloat(values.base_rate) || 0,
         branch_id: values.branch_id || null,
+        freelancer_ot_enabled: values.freelancer_ot_enabled,
       } as any).eq("id", values.id);
       if (error) throw error;
     },
@@ -138,33 +225,47 @@ const Freelancers = () => {
   });
 
   const generateInvoiceMutation = useMutation({
-    mutationFn: async (freelancer: StaffProfile & { phone_number?: string; bank_name?: string; bank_account_number?: string }) => {
+    mutationFn: async (freelancer: FreelancerExt) => {
       const logs = freelancerLogs.filter((l) => l.user_id === freelancer.user_id);
-      const totalHours = logs.reduce((s, l) => s + Number(l.net_hours), 0);
-      const hourlyRate = Number(freelancer.base_rate);
-      const totalPayable = Math.round(totalHours * hourlyRate * 100) / 100;
+      const baseRate = Number(freelancer.base_rate);
+      const otEnabled = freelancer.freelancer_ot_enabled ?? false;
+
+      const { lineItems, totalHours, totalPayable } = computeItemizedHours(logs, holidays, baseRate, otEnabled);
       const invoiceNumber = `INV-${freelancer.staff_id}-${selectedMonth.replace("-", "")}`;
+
+      // Store line items as JSON in service_description
+      const serviceDesc = lineItems.length > 1
+        ? lineItems.map((li) => `${li.description}: ${li.hours.toFixed(1)}h`).join(" | ")
+        : "Casual Labour Services";
 
       const { error } = await supabase.from("freelancer_invoices").upsert({
         staff_profile_id: freelancer.id,
         month: `${selectedMonth}-01`,
-        total_hours: Math.round(totalHours * 100) / 100,
-        hourly_rate: hourlyRate,
+        total_hours: totalHours,
+        hourly_rate: baseRate,
         total_payable: totalPayable,
         invoice_number: invoiceNumber,
+        service_description: serviceDesc,
         payment_due_date: new Date(new Date(`${selectedMonth}-01`).getFullYear(), new Date(`${selectedMonth}-01`).getMonth() + 1, 7).toISOString().split("T")[0],
         status: "issued",
       } as any, { onConflict: "staff_profile_id,month" });
       if (error) throw error;
+
+      // Store line items in localStorage for PDF generation (temp solution since DB doesn't have a JSON column)
+      localStorage.setItem(`invoice-items-${freelancer.id}-${selectedMonth}`, JSON.stringify(lineItems));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["freelancer-invoices"] });
-      toast({ title: "Invoice generated" });
+      toast({ title: "Invoice generated with itemized rates" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const downloadInvoice = async (invoice: any) => {
+    // Try to get stored line items
+    const storedItems = localStorage.getItem(`invoice-items-${invoice.staff_profile_id}-${format(new Date(invoice.month), "yyyy-MM")}`);
+    const lineItems: InvoiceLineItem[] = storedItems ? JSON.parse(storedItems) : [];
+
     const blob = await generateFreelancerInvoicePdf({
       companyName: companySettings?.company_name || "Company",
       companyAddress: companySettings?.address || "",
@@ -183,6 +284,7 @@ const Freelancers = () => {
       totalPayable: Number(invoice.total_payable),
       eInvoiceId: invoice.e_invoice_id ?? "",
       paymentDueDate: invoice.payment_due_date ? format(new Date(invoice.payment_due_date), "dd MMM yyyy") : "",
+      lineItems: lineItems.length > 0 ? lineItems : undefined,
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url;
@@ -273,15 +375,16 @@ const Freelancers = () => {
                   <TableHead>IC/Passport</TableHead>
                   <TableHead>Branch</TableHead>
                   <TableHead>Rate/hr</TableHead>
+                  <TableHead>OT Rates</TableHead>
                   <TableHead>Cycle Hours</TableHead>
                   <TableHead className="w-[80px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
                 ) : filteredFreelancers.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No freelancers yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No freelancers yet.</TableCell></TableRow>
                 ) : (
                   filteredFreelancers.map((f) => {
                     const hours = getFreelancerHours(f.user_id);
@@ -292,6 +395,11 @@ const Freelancers = () => {
                         <TableCell className="text-sm text-muted-foreground">{f.ic_number}</TableCell>
                         <TableCell>{getBranchName(f.branch_id)}</TableCell>
                         <TableCell>RM {Number(f.base_rate).toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={f.freelancer_ot_enabled ? "default" : "outline"}>
+                            {f.freelancer_ot_enabled ? "Enabled" : "Off"}
+                          </Badge>
+                        </TableCell>
                         <TableCell>
                           <Badge variant={hours > 0 ? "default" : "secondary"}>{hours.toFixed(1)}h</Badge>
                         </TableCell>
@@ -304,10 +412,11 @@ const Freelancers = () => {
                                 bank_name: (f as any).bank_name || "",
                                 bank_account_number: (f as any).bank_account_number || "",
                                 base_rate: String(f.base_rate), branch_id: f.branch_id || "",
+                                freelancer_ot_enabled: f.freelancer_ot_enabled ?? false,
                               });
                               setEditDialogOpen(true);
                             }}><Pencil className="h-4 w-4" /></Button>
-                            <Button size="sm" variant="ghost" onClick={() => generateInvoiceMutation.mutate(f as any)} title="Generate Invoice">
+                            <Button size="sm" variant="ghost" onClick={() => generateInvoiceMutation.mutate(f)} title="Generate Invoice">
                               <FileText className="h-4 w-4" />
                             </Button>
                           </div>
@@ -336,7 +445,7 @@ const Freelancers = () => {
                     <TableHead>Invoice #</TableHead>
                     <TableHead>Freelancer</TableHead>
                     <TableHead>Hours</TableHead>
-                    <TableHead>Rate</TableHead>
+                    <TableHead>Rate Breakdown</TableHead>
                     <TableHead>Total</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -348,7 +457,7 @@ const Freelancers = () => {
                       <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.staff_profiles?.name ?? "—"}</TableCell>
                       <TableCell>{Number(inv.total_hours).toFixed(1)}</TableCell>
-                      <TableCell>RM {Number(inv.hourly_rate).toFixed(2)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{inv.service_description}</TableCell>
                       <TableCell className="font-semibold">RM {Number(inv.total_payable).toFixed(2)}</TableCell>
                       <TableCell><Badge variant={inv.status === "paid" ? "default" : inv.status === "issued" ? "secondary" : "outline"}>{inv.status}</Badge></TableCell>
                       <TableCell>
@@ -387,6 +496,17 @@ const Freelancers = () => {
                   <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
                   <SelectContent>{branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                 </Select>
+              </div>
+              {/* OT Rates Toggle */}
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <div>
+                  <p className="text-sm font-medium">Enable OT Rates</p>
+                  <p className="text-xs text-muted-foreground">1.5x daily OT (&gt;8hrs), 2.0x/3.0x holidays</p>
+                </div>
+                <Switch
+                  checked={editForm.freelancer_ot_enabled}
+                  onCheckedChange={(v) => setEditForm({ ...editForm, freelancer_ot_enabled: v })}
+                />
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
