@@ -160,7 +160,18 @@ const Management = () => {
               mapContainerStyle={mapContainerStyle}
               center={branches.length > 0 ? { lat: branches[0].latitude, lng: branches[0].longitude } : defaultCenter}
               zoom={12}
-              options={{ streetViewControl: false, mapTypeControl: false }}
+              options={{
+                streetViewControl: false,
+                mapTypeControl: false,
+                styles: [
+                  { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
+                  { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
+                  { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+                  { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a2a3e" }] },
+                  { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e0e1a" }] },
+                  { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+                ],
+              }}
             >
               {branches.map((branch) => {
                 const count = branchActiveCounts[branch.id]?.length || 0;

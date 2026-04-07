@@ -31,7 +31,8 @@ const StaffBottomNav = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 safe-area-pb">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur safe-area-pb"
+      style={{ background: "hsl(0 0% 7% / 0.97)", borderColor: "hsl(0 0% 18%)" }}>
       <div className="flex h-16 items-center justify-around max-w-lg mx-auto">
         {tabs.map(({ to, icon: Icon, label }) => (
           <NavLink
@@ -39,8 +40,8 @@ const StaffBottomNav = () => {
             to={to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
+                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs font-medium transition-colors",
+                isActive ? "text-gold" : "text-muted-foreground"
               )
             }
           >

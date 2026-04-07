@@ -64,6 +64,14 @@ const BranchMap = ({ branches, onMapClick, pendingLocation }: BranchMapProps) =>
       options={{
         streetViewControl: false,
         mapTypeControl: false,
+        styles: [
+          { elementType: "geometry", stylers: [{ color: "#1a1a2e" }] },
+          { elementType: "labels.text.stroke", stylers: [{ color: "#1a1a2e" }] },
+          { elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+          { featureType: "road", elementType: "geometry", stylers: [{ color: "#2a2a3e" }] },
+          { featureType: "water", elementType: "geometry", stylers: [{ color: "#0e0e1a" }] },
+          { featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] },
+        ],
       }}
     >
       {branches.map((branch) => (
