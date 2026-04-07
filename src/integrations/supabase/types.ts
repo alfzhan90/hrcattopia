@@ -428,6 +428,7 @@ export type Database = {
           created_at: string
           device_id: string | null
           employment_type: Database["public"]["Enums"]["employment_type"]
+          freelancer_ot_enabled: boolean
           ic_number: string
           id: string
           kwsp_number: string | null
@@ -450,6 +451,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           employment_type?: Database["public"]["Enums"]["employment_type"]
+          freelancer_ot_enabled?: boolean
           ic_number: string
           id?: string
           kwsp_number?: string | null
@@ -472,6 +474,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           employment_type?: Database["public"]["Enums"]["employment_type"]
+          freelancer_ot_enabled?: boolean
           ic_number?: string
           id?: string
           kwsp_number?: string | null

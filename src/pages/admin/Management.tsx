@@ -52,11 +52,24 @@ const Management = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("staff_profiles")
-        .select("user_id, name, staff_id, branch_id, employment_type");
+        .select("user_id, name, staff_id, branch_id, employment_type, freelancer_ot_enabled");
       if (error) throw error;
-      const map: Record<string, { name: string; staff_id: string; branch_id: string | null; employment_type: string }> = {};
-      data?.forEach((s) => { map[s.user_id] = s; });
+      const map: Record<string, { name: string; staff_id: string; branch_id: string | null; employment_type: string; freelancer_ot_enabled?: boolean }> = {};
+      data?.forEach((s) => { map[s.user_id] = s as any; });
       return map;
+    },
+  });
+
+  // Holidays for today
+  const { data: todayHoliday } = useQuery({
+    queryKey: ["mgmt-holiday-today", today],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("public_holidays").select("name, multiplier")
+        .eq("date", today)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 
@@ -313,6 +326,11 @@ const Management = () => {
                           {s?.employment_type === "Freelancer" && <span className="h-3 w-3 rounded-full bg-orange-400 inline-block" />}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{s?.staff_id}</p>
+                        {s?.employment_type === "Freelancer" && (
+                          <p className="text-[10px] text-orange-500 font-medium">
+                            {todayHoliday ? `${todayHoliday.multiplier}x Holiday Rate` : s.freelancer_ot_enabled ? "OT Enabled (1.5x >8hrs)" : "Standard Rate"}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">

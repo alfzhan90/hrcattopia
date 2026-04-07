@@ -1,3 +1,10 @@
+export interface InvoiceLineItem {
+  description: string;
+  hours: number;
+  rate: number;
+  amount: number;
+}
+
 export interface FreelancerInvoiceData {
   companyName: string;
   companyAddress: string;
@@ -16,6 +23,7 @@ export interface FreelancerInvoiceData {
   totalPayable: number;
   eInvoiceId: string;
   paymentDueDate: string;
+  lineItems?: InvoiceLineItem[];
 }
 
 export const generateFreelancerInvoicePdf = async (data: FreelancerInvoiceData): Promise<Blob> => {
@@ -102,14 +110,21 @@ export const generateFreelancerInvoicePdf = async (data: FreelancerInvoiceData):
   doc.text("Amount (RM)", rm - 2, y + 5, { align: "right" });
   y += 10;
 
-  // Service Row
+  // Line items or single row
   doc.setFont("helvetica", "normal");
-  doc.text(data.serviceDescription, lm + 2, y);
-  doc.text(data.totalHours.toFixed(1), 100, y, { align: "center" });
-  doc.text(data.hourlyRate.toFixed(2), 135, y, { align: "center" });
-  doc.text(data.totalPayable.toFixed(2), rm - 2, y, { align: "right" });
-  y += 7;
+  const items = data.lineItems && data.lineItems.length > 0 ? data.lineItems : [
+    { description: data.serviceDescription, hours: data.totalHours, rate: data.hourlyRate, amount: data.totalPayable },
+  ];
 
+  items.forEach((item) => {
+    doc.text(item.description, lm + 2, y);
+    doc.text(item.hours.toFixed(1), 100, y, { align: "center" });
+    doc.text(item.rate.toFixed(2), 135, y, { align: "center" });
+    doc.text(item.amount.toFixed(2), rm - 2, y, { align: "right" });
+    y += 6;
+  });
+
+  y += 1;
   doc.line(lm, y, rm, y);
   y += 7;
 
