@@ -40,6 +40,9 @@ const Payroll = () => {
         <TabsContent value="import" className="mt-4">
           <BulkPayrollImporter />
         </TabsContent>
+        <TabsContent value="tax" className="mt-4">
+          <TaxCompliance />
+        </TabsContent>
         <TabsContent value="approval" className="mt-4">
           <LeaveApprovalInbox />
         </TabsContent>
