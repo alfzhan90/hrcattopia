@@ -10,7 +10,7 @@ interface BranchMapProps {
   pendingLocation?: { lat: number; lng: number } | null;
 }
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyCVQTyrQN4Dz07qZxHSV7QSF-riz2kDJMM";
 
 const defaultCenter = { lat: 3.1390, lng: 101.6869 }; // KL, Malaysia
 
