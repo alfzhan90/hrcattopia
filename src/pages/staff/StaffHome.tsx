@@ -40,6 +40,7 @@ const StaffHome = () => {
   });
 
   const isAreaManager = profile?.employment_type === "Area-Manager";
+  const isFreelancer = profile?.employment_type === "Freelancer";
 
   const { data: branch } = useQuery({
     queryKey: ["my-branch", profile?.branch_id],
@@ -48,7 +49,18 @@ const StaffHome = () => {
       if (error) throw error;
       return data as Branch;
     },
-    enabled: !!profile?.branch_id && !isAreaManager,
+    enabled: !!profile?.branch_id && !isAreaManager && !isFreelancer,
+  });
+
+  // Freelancer: fetch all branches (like Area Manager, can select)
+  const { data: allBranchesFreelancer = [] } = useQuery({
+    queryKey: ["all-branches-freelancer"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("branches").select("*").order("name");
+      if (error) throw error;
+      return data as Branch[];
+    },
+    enabled: isFreelancer,
   });
 
   // Area Manager: fetch all branches
@@ -65,6 +77,8 @@ const StaffHome = () => {
   const [selectedBranchId, setSelectedBranchId] = useState("");
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
+    : isFreelancer
+    ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
     : branch ?? null;
 
   const { data: activeLog } = useQuery({
