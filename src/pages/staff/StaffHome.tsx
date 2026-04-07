@@ -188,8 +188,8 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      const checkBranch = isAreaManager ? activeBranch : branch;
-      if (!profile || !checkBranch) throw new Error(isAreaManager ? "Select a branch first." : "No branch assigned.");
+      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
+      if (!profile || !checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned.");
 
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
@@ -209,13 +209,16 @@ const StaffHome = () => {
         throw new Error("Out of range");
       }
 
+      // No late penalty for freelancers, but flag unusual hours
       let lateMinutes = 0;
-      const now = new Date();
-      const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
-      const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
-      const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
-      if (now > new Date(scheduledTime.getTime() + graceMs)) {
-        lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
+      if (!isFreelancer) {
+        const now = new Date();
+        const [schedH, schedM] = (checkBranch as any).scheduled_start?.split(":").map(Number) ?? [9, 30];
+        const scheduledTime = new Date(now); scheduledTime.setHours(schedH, schedM, 0, 0);
+        const graceMs = ((checkBranch as any).grace_period_minutes ?? 10) * 60 * 1000;
+        if (now > new Date(scheduledTime.getTime() + graceMs)) {
+          lateMinutes = Math.round((now.getTime() - scheduledTime.getTime()) / 60000);
+        }
       }
 
       const { error } = await supabase.from("attendance_logs").insert({
