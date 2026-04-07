@@ -23,12 +23,9 @@ import type { Tables as DBTables } from "@/integrations/supabase/types";
 type StaffProfile = DBTables<"staff_profiles">;
 type Branch = DBTables<"branches">;
 
-interface FreelancerExt extends StaffProfile {
-  phone_number?: string;
-  bank_name?: string;
-  bank_account_number?: string;
+type FreelancerExt = StaffProfile & {
   freelancer_ot_enabled?: boolean;
-}
+};
 
 /** Compute itemized hours for a freelancer given their logs and holidays */
 function computeItemizedHours(
