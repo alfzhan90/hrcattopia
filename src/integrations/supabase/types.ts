@@ -435,10 +435,12 @@ export type Database = {
           mc_balance: number
           name: string
           ot_rate_per_hour: number
+          passport_number: string | null
           phone_number: string | null
           privacy_tracking_enabled: boolean
           socso_number: string | null
           staff_id: string
+          tax_reference_number: string | null
           updated_at: string
           user_id: string
         }
@@ -458,10 +460,12 @@ export type Database = {
           mc_balance?: number
           name: string
           ot_rate_per_hour?: number
+          passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id: string
+          tax_reference_number?: string | null
           updated_at?: string
           user_id: string
         }
@@ -481,10 +485,12 @@ export type Database = {
           mc_balance?: number
           name?: string
           ot_rate_per_hour?: number
+          passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
           socso_number?: string | null
           staff_id?: string
+          tax_reference_number?: string | null
           updated_at?: string
           user_id?: string
         }
