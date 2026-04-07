@@ -326,6 +326,11 @@ const Management = () => {
                           {s?.employment_type === "Freelancer" && <span className="h-3 w-3 rounded-full bg-orange-400 inline-block" />}
                         </div>
                         <p className="text-xs text-muted-foreground font-mono">{s?.staff_id}</p>
+                        {s?.employment_type === "Freelancer" && (
+                          <p className="text-[10px] text-orange-500 font-medium">
+                            {todayHoliday ? `${todayHoliday.multiplier}x Holiday Rate` : s.freelancer_ot_enabled ? "OT Enabled (1.5x >8hrs)" : "Standard Rate"}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="text-right">
