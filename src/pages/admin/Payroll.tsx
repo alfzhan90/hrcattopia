@@ -7,6 +7,7 @@ import PayrollProcessing from "@/components/payroll/PayrollProcessing";
 import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
 import BulkPayrollImporter from "@/components/payroll/BulkPayrollImporter";
 import YtdSummary from "@/components/payroll/YtdSummary";
+import TaxCompliance from "@/components/payroll/TaxCompliance";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
@@ -22,6 +23,7 @@ const Payroll = () => {
         <TabsList className="flex-wrap">
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
           <TabsTrigger value="ytd">YTD Summary</TabsTrigger>
+          <TabsTrigger value="tax">Tax & Compliance</TabsTrigger>
           <TabsTrigger value="import">Import History</TabsTrigger>
           <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
