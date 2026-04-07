@@ -35,9 +35,24 @@ export const calcDailyOt = (netHours: number): number => {
   return Math.max(netHours - 8, 0);
 };
 
-/** Calculate base hourly rate: (Basic Salary / 26 days) / 8 hours */
+/** Calculate base hourly rate: (Basic Salary / 26 days) / 8 hours — used for OT/late */
 export const calcHourlyRate = (monthlySalary: number): number => {
   return monthlySalary / 26 / 8;
+};
+
+/**
+ * Get the number of calendar days in the primary month of a pay period.
+ * For "2026-04" (cycle 24/3–23/4), the primary month is April → 30 days.
+ */
+export const getCalendarDaysForMonth = (monthStr: string): number => {
+  const [year, month] = monthStr.split("-").map(Number);
+  // new Date(year, month, 0).getDate() gives the last day of that month
+  return new Date(year, month, 0).getDate();
+};
+
+/** Calculate daily rate using calendar days (Section 18A): Monthly Salary / Days in Month */
+export const calcDailyRateProrated = (monthlySalary: number, daysInMonth: number): number => {
+  return monthlySalary / daysInMonth;
 };
 
 /** EPF Employee: 11% */
@@ -128,9 +143,16 @@ export const calcEis = (salary: number): { employee: number; employer: number } 
   return { employee: amount, employer: amount };
 };
 
-/** Calculate daily rate from monthly salary (assume 26 working days) */
+/** Calculate daily rate from monthly salary (assume 26 working days) — legacy, use calcDailyRateProrated instead */
 export const dailyRate = (monthlySalary: number) => monthlySalary / 26;
 
-/** Calculate UPL deduction */
-export const calcUplDeduction = (monthlySalary: number, uplDays: number) =>
-  Math.round(dailyRate(monthlySalary) * uplDays * 100) / 100;
+/**
+ * Calculate UPL deduction using Section 18A proration.
+ * @param monthlySalary - Monthly basic salary
+ * @param uplDays - Number of unpaid leave days
+ * @param daysInMonth - Calendar days in the primary month (28–31)
+ */
+export const calcUplDeduction = (monthlySalary: number, uplDays: number, daysInMonth?: number) => {
+  const divisor = daysInMonth ?? 26; // fallback to 26 for legacy/imported data
+  return Math.round((monthlySalary / divisor) * uplDays * 100) / 100;
+};
