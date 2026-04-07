@@ -62,7 +62,7 @@ const LeaveManagement = () => {
         if (staffProfile) {
           const field = form.leave_type === "AL" ? "al_balance" : "mc_balance";
           const newBalance = Math.max(0, (staffProfile[field] as number) - 1);
-          await supabase.from("staff_profiles").update({ [field]: newBalance }).eq("id", form.staff_profile_id);
+          await supabase.from("staff_profiles").update(field === "al_balance" ? { al_balance: newBalance } : { mc_balance: newBalance }).eq("id", form.staff_profile_id);
         }
       }
     },

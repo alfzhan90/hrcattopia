@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText } from "lucide-react";
-import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod } from "@/lib/payroll";
+import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { jsPDF } from "jspdf";
 import { format, startOfWeek, eachDayOfInterval, isWeekend } from "date-fns";
@@ -177,7 +177,9 @@ const PayrollProcessing = () => {
         const totalOtHours = totalDailyOt + weeklyExtraOt;
         const otPay = Math.round(totalOtHours * hourlyRate * 1.5 * 100) / 100;
 
-        const uplDeduction = calcUplDeduction(basicPay, totalUplDays);
+        const calendarDays = getCalendarDaysForMonth(selectedMonth);
+        const dailyRateProrated = calcDailyRateProrated(basicPay, calendarDays);
+        const uplDeduction = calcUplDeduction(basicPay, totalUplDays, calendarDays);
 
         // Mileage claim for Area Managers (RM0.80/km)
         let mileageClaim = 0;
@@ -331,6 +333,9 @@ const PayrollProcessing = () => {
     const branch = branches.find((b: any) => b.id === s.branch_id);
 
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
+    const monthStr = format(new Date(run.month), "yyyy-MM");
+    const calendarDays = getCalendarDaysForMonth(monthStr);
+    const dailyRate = calcDailyRateProrated(Number(run.basic_pay), calendarDays);
     const blob = await generatePayslipPdf({
       companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       month: format(new Date(run.month), "MMMM yyyy"),
@@ -347,6 +352,7 @@ const PayrollProcessing = () => {
       allowance: Number(run.allowance),
       commission: Number(run.commission),
       holidayPay: Number(run.holiday_pay),
+      mileageClaim: Number(run.mileage_claim),
       grossPay: Number(run.gross_pay),
       epfEmployee: Number(run.epf_employee),
       epfEmployer: Number(run.epf_employer),
@@ -357,6 +363,9 @@ const PayrollProcessing = () => {
       pcb: Number(run.pcb),
       uplDeduction: Number(run.upl_deduction),
       netPay: Number(run.net_pay),
+      calendarDays,
+      dailyRate,
+      uplDays: monthlySummary[run.staff_profile_id]?.upl ?? 0,
     });
 
     const url = URL.createObjectURL(blob);
@@ -443,8 +452,9 @@ const PayrollProcessing = () => {
           )}
         </div>
       </div>
-      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}
+      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground space-y-1">
+        <div><span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}</div>
+        <div><span className="font-medium text-foreground">Proration (Section 18A):</span> {getCalendarDaysForMonth(selectedMonth)} calendar days in {format(new Date(monthDate), "MMMM yyyy")} — UPL deducted at 1/{getCalendarDaysForMonth(selectedMonth)} of basic salary per day</div>
       </div>
 
       {/* Monthly Attendance Summary */}

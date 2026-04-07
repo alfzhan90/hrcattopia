@@ -59,7 +59,7 @@ const LeaveApprovalInbox = () => {
         const newBalance = Math.max(0, currentBalance - 1);
         await supabase
           .from("staff_profiles")
-          .update({ [field]: newBalance })
+          .update(field === "al_balance" ? { al_balance: newBalance } : { mc_balance: newBalance })
           .eq("id", leave.staff_profiles.id);
       }
     },

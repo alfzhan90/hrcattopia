@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download } from "lucide-react";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
-import { getPayPeriod } from "@/lib/payroll";
+import { getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated } from "@/lib/payroll";
 import { format } from "date-fns";
 
 const StaffPayslips = () => {
@@ -48,6 +48,9 @@ const StaffPayslips = () => {
   const downloadPayslip = async (run: any) => {
     if (!profile) return;
     const period = getPayPeriod(format(new Date(run.month), "yyyy-MM"));
+    const monthStr = format(new Date(run.month), "yyyy-MM");
+    const calendarDays = getCalendarDaysForMonth(monthStr);
+    const dailyRate = calcDailyRateProrated(Number(run.basic_pay), calendarDays);
     const blob = await generatePayslipPdf({
       companyName: companySettings?.company_name || "CATTOPIA SDN BHD",
       periodLabel: period.label,
@@ -56,11 +59,15 @@ const StaffPayslips = () => {
       kwspNumber: profile.kwsp_number ?? "", socsoNumber: profile.socso_number ?? "",
       branchName: branch?.name ?? "—", employmentType: profile.employment_type,
       basicPay: Number(run.basic_pay), otPay: Number(run.ot_pay), allowance: Number(run.allowance),
-      commission: Number(run.commission), holidayPay: Number(run.holiday_pay), grossPay: Number(run.gross_pay),
+      commission: Number(run.commission), holidayPay: Number(run.holiday_pay),
+      mileageClaim: Number(run.mileage_claim ?? 0),
+      grossPay: Number(run.gross_pay),
       epfEmployee: Number(run.epf_employee), epfEmployer: Number(run.epf_employer),
       socsoEmployee: Number(run.socso_employee), socsoEmployer: Number(run.socso_employer),
       eisEmployee: Number(run.eis_employee), eisEmployer: Number(run.eis_employer),
       pcb: Number(run.pcb), uplDeduction: Number(run.upl_deduction), netPay: Number(run.net_pay),
+      calendarDays,
+      dailyRate,
     });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
