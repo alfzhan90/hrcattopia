@@ -452,8 +452,9 @@ const PayrollProcessing = () => {
           )}
         </div>
       </div>
-      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground">
-        <span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}
+      <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground space-y-1">
+        <div><span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}</div>
+        <div><span className="font-medium text-foreground">Proration (Section 18A):</span> {getCalendarDaysForMonth(selectedMonth)} calendar days in {format(new Date(monthDate), "MMMM yyyy")} — UPL deducted at 1/{getCalendarDaysForMonth(selectedMonth)} of basic salary per day</div>
       </div>
 
       {/* Monthly Attendance Summary */}
