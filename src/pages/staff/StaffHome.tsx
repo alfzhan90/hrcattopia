@@ -282,6 +282,7 @@ const StaffHome = () => {
           <div className="flex items-center gap-2">
             <p className="text-xs text-muted-foreground font-mono">{profile.staff_id}</p>
             {isAreaManager && <Badge variant="secondary" className="text-[10px]">Area Manager</Badge>}
+            {isFreelancer && <Badge variant="secondary" className="text-[10px]">Freelancer</Badge>}
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
@@ -298,8 +299,8 @@ const StaffHome = () => {
         </Alert>
       )}
 
-      {/* Area Manager Branch Selector */}
-      {isAreaManager && !activeLog && (
+      {/* Area Manager / Freelancer Branch Selector */}
+      {(isAreaManager || (isFreelancer && !profile?.branch_id)) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
             <p className="text-sm font-medium">Select Branch to Check In</p>
@@ -308,7 +309,7 @@ const StaffHome = () => {
                 <SelectValue placeholder="Choose any branch..." />
               </SelectTrigger>
               <SelectContent>
-                {allBranches.map((b) => (
+                {(isAreaManager ? allBranches : allBranchesFreelancer).map((b) => (
                   <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -360,7 +361,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending || (isAreaManager && !selectedBranchId)}
+              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
