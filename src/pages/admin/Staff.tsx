@@ -59,6 +59,8 @@ const Staff = () => {
     branch_id: string;
   } | null>(null);
   const [emailUpdatePending, setEmailUpdatePending] = useState(false);
+  const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
+  const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
