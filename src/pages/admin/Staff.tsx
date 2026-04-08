@@ -479,6 +479,25 @@ const Staff = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Employment Status Wizard */}
+      {wizardStaff && (
+        <EmploymentStatusWizard
+          staff={wizardStaff}
+          open={!!wizardStaff}
+          onOpenChange={(open) => { if (!open) setWizardStaff(null); }}
+        />
+      )}
+
+      {/* Role Timeline */}
+      {timelineStaff && (
+        <RoleTimeline
+          staffId={timelineStaff.id}
+          staffName={timelineStaff.name}
+          open={!!timelineStaff}
+          onOpenChange={(open) => { if (!open) setTimelineStaff(null); }}
+        />
+      )}
     </div>
   );
 };
