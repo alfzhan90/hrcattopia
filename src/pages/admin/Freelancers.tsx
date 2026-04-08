@@ -550,6 +550,21 @@ const Freelancers = () => {
           )}
         </DialogContent>
       </Dialog>
+      {wizardStaff && (
+        <EmploymentStatusWizard
+          staff={wizardStaff}
+          open={!!wizardStaff}
+          onOpenChange={(open) => { if (!open) setWizardStaff(null); }}
+        />
+      )}
+      {timelineStaff && (
+        <RoleTimeline
+          staffId={timelineStaff.id}
+          staffName={timelineStaff.name}
+          open={!!timelineStaff}
+          onOpenChange={(open) => { if (!open) setTimelineStaff(null); }}
+        />
+      )}
     </div>
   );
 };
