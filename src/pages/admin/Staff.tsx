@@ -368,7 +368,7 @@ const Staff = () => {
           </DialogHeader>
           {editForm && (
             <form onSubmit={handleEditSubmit} className="space-y-4">
-              {staffFormFields(editForm, setEditForm, false)}
+              {staffFormFields(editForm, setEditForm, false, true)}
               <div className="flex items-center gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditForm(null); }}>Cancel</Button>
                 <Button type="submit" disabled={updateMutation.isPending}>
@@ -398,6 +398,7 @@ const Staff = () => {
             <TableRow>
               <TableHead>Staff ID</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Email</TableHead>
               <TableHead>IC Number</TableHead>
               <TableHead>Branch</TableHead>
               <TableHead>Type</TableHead>
