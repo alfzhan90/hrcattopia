@@ -439,6 +439,12 @@ const Freelancers = () => {
                               });
                               setEditDialogOpen(true);
                             }}><Pencil className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => setWizardStaff(f)} title="Change status">
+                              <ArrowRightLeft className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(f)} title="View timeline">
+                              <Clock className="h-4 w-4" />
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => generateInvoiceMutation.mutate(f)} title="Generate Invoice">
                               <FileText className="h-4 w-4" />
                             </Button>
