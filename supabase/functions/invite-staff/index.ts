@@ -90,6 +90,20 @@ Deno.serve(async (req) => {
 
     const newUserId = inviteData.user.id;
 
+    // Check if staff profile already exists for this user
+    const { data: existingProfile } = await adminClient
+      .from("staff_profiles")
+      .select("id")
+      .eq("user_id", newUserId)
+      .maybeSingle();
+
+    if (existingProfile) {
+      return new Response(
+        JSON.stringify({ success: true, user_id: newUserId, message: "Staff member already exists. Invite re-sent." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Create staff profile
     const { error: profileError } = await adminClient
       .from("staff_profiles")
