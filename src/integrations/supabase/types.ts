@@ -427,6 +427,7 @@ export type Database = {
           branch_id: string | null
           created_at: string
           device_id: string | null
+          email: string | null
           employment_type: Database["public"]["Enums"]["employment_type"]
           freelancer_ot_enabled: boolean
           ic_number: string
@@ -452,6 +453,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           device_id?: string | null
+          email?: string | null
           employment_type?: Database["public"]["Enums"]["employment_type"]
           freelancer_ot_enabled?: boolean
           ic_number: string
@@ -477,6 +479,7 @@ export type Database = {
           branch_id?: string | null
           created_at?: string
           device_id?: string | null
+          email?: string | null
           employment_type?: Database["public"]["Enums"]["employment_type"]
           freelancer_ot_enabled?: boolean
           ic_number?: string
