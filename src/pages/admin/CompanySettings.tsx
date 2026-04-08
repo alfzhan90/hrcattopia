@@ -49,18 +49,25 @@ const CompanySettings = () => {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!settings?.id) throw new Error("No settings row found");
-      const { error } = await supabase
-        .from("company_settings")
-        .update({
-          company_name: form.company_name,
-          ssm_number: form.ssm_number,
-          address: form.address,
-          phone: form.phone,
-          logo_url: form.logo_url || null,
-        })
-        .eq("id", settings.id);
-      if (error) throw error;
+      const payload = {
+        company_name: form.company_name,
+        ssm_number: form.ssm_number,
+        address: form.address,
+        phone: form.phone,
+        logo_url: form.logo_url || null,
+      };
+      if (settings?.id) {
+        const { error } = await supabase
+          .from("company_settings")
+          .update(payload)
+          .eq("id", settings.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("company_settings")
+          .insert(payload);
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["company-settings"] });
