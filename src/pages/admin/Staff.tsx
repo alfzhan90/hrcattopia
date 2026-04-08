@@ -407,7 +407,7 @@ const Staff = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Device</TableHead>
-              <TableHead className="w-[120px]">Actions</TableHead>
+              <TableHead className="w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -451,13 +451,14 @@ const Staff = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEditDialog(s)}
-                        title="Edit staff"
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(s)} title="Edit staff">
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setWizardStaff(s)} title="Change employment status">
+                        <ArrowRightLeft className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)} title="View timeline">
+                        <Clock className="h-4 w-4" />
                       </Button>
                       {s.device_id && (
                         <Button
