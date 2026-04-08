@@ -19,20 +19,37 @@ export const getPayPeriod = (monthStr: string) => {
 };
 
 
-/** Calculate rest hours: 1 hour for every 5 hours worked */
+/**
+ * Malaysian Employment Act: Mandatory 1-hour rest deduction
+ * if total duration is 5 hours or more. Only 1 hour, not per-5-hours.
+ */
 export const calcRestHours = (totalHours: number): number => {
-  return Math.floor(totalHours / 5);
+  return totalHours >= 5 ? 1 : 0;
 };
 
-/** Calculate net hours after rest deduction */
+/**
+ * Calculate net hours after rest deduction.
+ * Applies 30-minute rounding protection: differences under 30 minutes
+ * from the 8-hour mark are not penalised or rewarded.
+ */
 export const calcNetHours = (totalHours: number): number => {
   const rest = calcRestHours(totalHours);
-  return Math.max(totalHours - rest, 0);
+  const net = Math.max(totalHours - rest, 0);
+  // Round to 2 decimal places
+  return Math.round(net * 100) / 100;
 };
 
-/** Calculate daily OT: net hours exceeding 8 at 1.5x */
+/**
+ * Calculate daily OT: net hours exceeding 8 at 1.5x.
+ * 30-minute rounding protection: if net is between 8 and 8 but less than
+ * 30 minutes over, do not count OT (e.g. 9:31-6:31 = 8.0 net, no OT).
+ */
 export const calcDailyOt = (netHours: number): number => {
-  return Math.max(netHours - 8, 0);
+  // If net hours exceed 8 by less than 0.5 hours (30 min), treat as exactly 8
+  const overage = netHours - 8;
+  if (overage <= 0) return 0;
+  if (overage < 0.5) return 0; // 30-minute grace — no OT
+  return Math.round(overage * 100) / 100;
 };
 
 /** Calculate base hourly rate: (Basic Salary / 26 days) / 8 hours — used for OT/late */
