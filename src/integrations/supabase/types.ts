@@ -418,8 +418,59 @@ export type Database = {
         }
         Relationships: []
       }
+      role_history: {
+        Row: {
+          action_type: string
+          changed_by: string
+          created_at: string
+          effective_date: string
+          id: string
+          new_rate: number
+          new_role: string
+          old_rate: number
+          old_role: string
+          reason: string | null
+          staff_profile_id: string
+        }
+        Insert: {
+          action_type?: string
+          changed_by: string
+          created_at?: string
+          effective_date: string
+          id?: string
+          new_rate?: number
+          new_role: string
+          old_rate?: number
+          old_role: string
+          reason?: string | null
+          staff_profile_id: string
+        }
+        Update: {
+          action_type?: string
+          changed_by?: string
+          created_at?: string
+          effective_date?: string
+          id?: string
+          new_rate?: number
+          new_role?: string
+          old_rate?: number
+          old_role?: string
+          reason?: string | null
+          staff_profile_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_history_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_profiles: {
         Row: {
+          access_revoke_date: string | null
           al_balance: number
           bank_account_number: string | null
           bank_name: string | null
@@ -428,11 +479,15 @@ export type Database = {
           created_at: string
           device_id: string | null
           email: string | null
+          employment_status: string
           employment_type: Database["public"]["Enums"]["employment_type"]
+          exit_date: string | null
+          exit_reason: string | null
           freelancer_ot_enabled: boolean
           ic_number: string
           id: string
           kwsp_number: string | null
+          leave_encashment_days: number
           mc_balance: number
           name: string
           ot_rate_per_hour: number
@@ -446,6 +501,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          access_revoke_date?: string | null
           al_balance?: number
           bank_account_number?: string | null
           bank_name?: string | null
@@ -454,11 +510,15 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
+          exit_date?: string | null
+          exit_reason?: string | null
           freelancer_ot_enabled?: boolean
           ic_number: string
           id?: string
           kwsp_number?: string | null
+          leave_encashment_days?: number
           mc_balance?: number
           name: string
           ot_rate_per_hour?: number
@@ -472,6 +532,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          access_revoke_date?: string | null
           al_balance?: number
           bank_account_number?: string | null
           bank_name?: string | null
@@ -480,11 +541,15 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
+          exit_date?: string | null
+          exit_reason?: string | null
           freelancer_ot_enabled?: boolean
           ic_number?: string
           id?: string
           kwsp_number?: string | null
+          leave_encashment_days?: number
           mc_balance?: number
           name?: string
           ot_rate_per_hour?: number
