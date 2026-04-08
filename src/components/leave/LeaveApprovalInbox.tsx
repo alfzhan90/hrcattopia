@@ -17,8 +17,9 @@ const LeaveApprovalInbox = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leave_records")
-        .select("*, staff_profiles(name, staff_id, al_balance, mc_balance, id)")
+        .select("*, staff_profiles!inner(name, staff_id, al_balance, mc_balance, id, employment_type)")
         .eq("status", "pending" as any)
+        .neq("staff_profiles.employment_type", "Freelancer")
         .order("date", { ascending: true });
       if (error) throw error;
       return data;

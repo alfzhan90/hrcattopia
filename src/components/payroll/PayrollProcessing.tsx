@@ -107,8 +107,9 @@ const PayrollProcessing = () => {
       const runs = [];
 
       for (const s of staff) {
+        const isFreelancer = s.employment_type === "Freelancer";
         const staffLogs = (allLogs ?? []).filter((l) => l.user_id === s.user_id);
-        const staffLeave = (leaveRecords ?? []).filter((lr: any) => lr.staff_profile_id === s.id);
+        const staffLeave = isFreelancer ? [] : (leaveRecords ?? []).filter((lr: any) => lr.staff_profile_id === s.id);
         
         // Count days by type
         const attendanceDates = new Set(
@@ -120,14 +121,13 @@ const PayrollProcessing = () => {
         const explicitUplDays = staffLeave.filter((lr: any) => lr.leave_type === "UPL").length;
         const leaveDates = new Set(staffLeave.map((lr: any) => lr.date));
         
-        // MIA: working days with no attendance AND no approved leave
-        const miaDays = workingDays.filter((d) => {
+        // MIA & UPL: skip for freelancers (no leave concept)
+        const miaDays = isFreelancer ? 0 : workingDays.filter((d) => {
           const dateStr = format(d, "yyyy-MM-dd");
           return !attendanceDates.has(dateStr) && !leaveDates.has(dateStr);
         }).length;
         
-        // Total UPL = explicit UPL + MIA days
-        const totalUplDays = explicitUplDays + miaDays;
+        const totalUplDays = isFreelancer ? 0 : explicitUplDays + miaDays;
         const daysWorked = attendanceDates.size;
 
         const basicPay = Number(s.base_rate);

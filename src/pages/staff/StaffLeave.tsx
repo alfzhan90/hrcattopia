@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,11 @@ const StaffLeave = () => {
     },
     enabled: !!user,
   });
+
+  // Redirect freelancers away from leave page
+  if (profile?.employment_type === "Freelancer") {
+    return <Navigate to="/staff/dashboard" replace />;
+  }
 
   const { data: leaves = [] } = useQuery({
     queryKey: ["my-leave-requests", profile?.id],
