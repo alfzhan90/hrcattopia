@@ -409,11 +409,11 @@ const Staff = () => {
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filteredStaff.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                   {search ? "No matching staff found." : "No staff members yet."}
                 </TableCell>
               </TableRow>
@@ -422,6 +422,7 @@ const Staff = () => {
                 <TableRow key={s.id}>
                   <TableCell className="font-mono text-sm">{s.staff_id}</TableCell>
                   <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{(s as any).email || "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.ic_number}</TableCell>
                   <TableCell>{getBranchName(s.branch_id)}</TableCell>
                   <TableCell>
