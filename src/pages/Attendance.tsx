@@ -219,11 +219,11 @@ const Attendance = () => {
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
       
-      // Rest deduction: 1 hour per 5 hours worked
-      const restHours = Math.floor(totalHours / 5);
-      const netHours = Math.max(totalHours - restHours, 0);
+      // Malaysian Employment Act: 1 hour rest if >= 5 hours worked
+      const restHours = calcRestHours(totalHours);
+      const netHours = calcNetHours(totalHours);
       const regularHours = Math.min(netHours, 8);
-      const otHours = Math.max(netHours - 8, 0);
+      const otHours = calcDailyOt(netHours);
 
       const { error } = await supabase
         .from("attendance_logs")
