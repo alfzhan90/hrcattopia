@@ -107,7 +107,7 @@ const Freelancers = () => {
   });
 
   const [editForm, setEditForm] = useState<{
-    id: string; name: string; ic_number: string; phone_number: string;
+    id: string; name: string; email: string; ic_number: string; phone_number: string;
     bank_name: string; bank_account_number: string; base_rate: string; branch_id: string;
     freelancer_ot_enabled: boolean;
   } | null>(null);
@@ -203,6 +203,9 @@ const Freelancers = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (values: NonNullable<typeof editForm>) => {
+      const original = freelancers.find((f) => f.id === values.id);
+      const originalEmail = (original as any)?.email || "";
+
       const { error } = await supabase.from("staff_profiles").update({
         name: values.name, ic_number: values.ic_number,
         phone_number: values.phone_number, bank_name: values.bank_name,
@@ -212,10 +215,28 @@ const Freelancers = () => {
         freelancer_ot_enabled: values.freelancer_ot_enabled,
       } as any).eq("id", values.id);
       if (error) throw error;
+
+      if (values.email && values.email !== originalEmail) {
+        const { data, error: fnError } = await supabase.functions.invoke("update-user-email", {
+          body: { staff_profile_id: values.id, new_email: values.email },
+        });
+        if (fnError) throw new Error(fnError.message);
+        if (data?.error) throw new Error(data.error);
+        return { emailUpdated: true };
+      }
+      return { emailUpdated: false };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["freelancers"] });
-      toast({ title: "Updated", description: "Freelancer profile saved." });
+      if (result?.emailUpdated) {
+        toast({
+          title: "✨ Email Update Initiated",
+          description: "Confirmation links have been sent to both the old and new email addresses. The change will reflect once verified.",
+          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+        });
+      } else {
+        toast({ title: "Updated", description: "Freelancer profile saved." });
+      }
       setEditDialogOpen(false);
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -404,7 +425,8 @@ const Freelancers = () => {
                           <div className="flex gap-1">
                             <Button size="sm" variant="ghost" onClick={() => {
                               setEditForm({
-                                id: f.id, name: f.name, ic_number: f.ic_number,
+                                id: f.id, name: f.name, email: (f as any).email || "",
+                                ic_number: f.ic_number,
                                 phone_number: (f as any).phone_number || "",
                                 bank_name: (f as any).bank_name || "",
                                 bank_account_number: (f as any).bank_account_number || "",
@@ -475,6 +497,11 @@ const Freelancers = () => {
           <DialogHeader><DialogTitle>Edit Freelancer</DialogTitle></DialogHeader>
           {editForm && (
             <form onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(editForm); }} className="space-y-4">
+              <div className="space-y-2">
+                <Label>Email Address</Label>
+                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="freelancer@example.com" />
+                <p className="text-xs text-muted-foreground">Changing this will send confirmation to both old and new email.</p>
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Full Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
                 <div className="space-y-2"><Label>IC/Passport</Label><Input value={editForm.ic_number} onChange={(e) => setEditForm({ ...editForm, ic_number: formatIcNumber(e.target.value) })} required /></div>
