@@ -17,7 +17,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save, Pencil } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock } from "lucide-react";
+import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
+import RoleTimeline from "@/components/staff/RoleTimeline";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -57,6 +59,8 @@ const Staff = () => {
     branch_id: string;
   } | null>(null);
   const [emailUpdatePending, setEmailUpdatePending] = useState(false);
+  const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
+  const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
@@ -403,7 +407,7 @@ const Staff = () => {
               <TableHead>Branch</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Device</TableHead>
-              <TableHead className="w-[120px]">Actions</TableHead>
+              <TableHead className="w-[180px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -447,13 +451,14 @@ const Staff = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => openEditDialog(s)}
-                        title="Edit staff"
-                      >
+                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(s)} title="Edit staff">
                         <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setWizardStaff(s)} title="Change employment status">
+                        <ArrowRightLeft className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)} title="View timeline">
+                        <Clock className="h-4 w-4" />
                       </Button>
                       {s.device_id && (
                         <Button
@@ -474,6 +479,25 @@ const Staff = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Employment Status Wizard */}
+      {wizardStaff && (
+        <EmploymentStatusWizard
+          staff={wizardStaff}
+          open={!!wizardStaff}
+          onOpenChange={(open) => { if (!open) setWizardStaff(null); }}
+        />
+      )}
+
+      {/* Role Timeline */}
+      {timelineStaff && (
+        <RoleTimeline
+          staffId={timelineStaff.id}
+          staffName={timelineStaff.name}
+          open={!!timelineStaff}
+          onOpenChange={(open) => { if (!open) setTimelineStaff(null); }}
+        />
+      )}
     </div>
   );
 };

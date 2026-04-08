@@ -12,7 +12,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Pencil, FileText, Download } from "lucide-react";
+import { Plus, Search, Pencil, FileText, Download, ArrowRightLeft, Clock } from "lucide-react";
+import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
+import RoleTimeline from "@/components/staff/RoleTimeline";
 import { format } from "date-fns";
 import { getPayPeriod } from "@/lib/payroll";
 import { generateFreelancerInvoicePdf } from "@/lib/freelancer-invoice-pdf";
@@ -100,6 +102,8 @@ const Freelancers = () => {
   const [search, setSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const { data: companySettings } = useCompanySettings();
+  const [wizardStaff, setWizardStaff] = useState<FreelancerExt | null>(null);
+  const [timelineStaff, setTimelineStaff] = useState<FreelancerExt | null>(null);
 
   const [form, setForm] = useState({
     name: "", email: "", ic_number: "", phone_number: "", bank_name: "", bank_account_number: "",
@@ -435,6 +439,12 @@ const Freelancers = () => {
                               });
                               setEditDialogOpen(true);
                             }}><Pencil className="h-4 w-4" /></Button>
+                            <Button size="sm" variant="ghost" onClick={() => setWizardStaff(f)} title="Change status">
+                              <ArrowRightLeft className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(f)} title="View timeline">
+                              <Clock className="h-4 w-4" />
+                            </Button>
                             <Button size="sm" variant="ghost" onClick={() => generateInvoiceMutation.mutate(f)} title="Generate Invoice">
                               <FileText className="h-4 w-4" />
                             </Button>
@@ -540,6 +550,21 @@ const Freelancers = () => {
           )}
         </DialogContent>
       </Dialog>
+      {wizardStaff && (
+        <EmploymentStatusWizard
+          staff={wizardStaff}
+          open={!!wizardStaff}
+          onOpenChange={(open) => { if (!open) setWizardStaff(null); }}
+        />
+      )}
+      {timelineStaff && (
+        <RoleTimeline
+          staffId={timelineStaff.id}
+          staffName={timelineStaff.name}
+          open={!!timelineStaff}
+          onOpenChange={(open) => { if (!open) setTimelineStaff(null); }}
+        />
+      )}
     </div>
   );
 };
