@@ -47,6 +47,7 @@ const Staff = () => {
   const [editForm, setEditForm] = useState<{
     id: string;
     name: string;
+    email: string;
     ic_number: string;
     kwsp_number: string;
     socso_number: string;
@@ -55,6 +56,7 @@ const Staff = () => {
     ot_rate_per_hour: string;
     branch_id: string;
   } | null>(null);
+  const [emailUpdatePending, setEmailUpdatePending] = useState(false);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
@@ -112,6 +114,11 @@ const Staff = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (values: NonNullable<typeof editForm>) => {
+      // Find original staff to check if email changed
+      const original = staff.find((s) => s.id === values.id);
+      const originalEmail = (original as any)?.email || "";
+
+      // Update profile fields
       const { error } = await supabase
         .from("staff_profiles")
         .update({
@@ -126,10 +133,29 @@ const Staff = () => {
         })
         .eq("id", values.id);
       if (error) throw error;
+
+      // If email changed, call the edge function
+      if (values.email && values.email !== originalEmail) {
+        const { data, error: fnError } = await supabase.functions.invoke("update-user-email", {
+          body: { staff_profile_id: values.id, new_email: values.email },
+        });
+        if (fnError) throw new Error(fnError.message);
+        if (data?.error) throw new Error(data.error);
+        return { emailUpdated: true };
+      }
+      return { emailUpdated: false };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
-      toast({ title: "Staff updated", description: "Profile has been saved." });
+      if (result?.emailUpdated) {
+        toast({
+          title: "✨ Email Update Initiated",
+          description: "Confirmation links have been sent to both the old and new email addresses. The change will reflect once verified.",
+          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+        });
+      } else {
+        toast({ title: "Staff updated", description: "Profile has been saved." });
+      }
       setEditDialogOpen(false);
       setEditForm(null);
     },
@@ -174,6 +200,7 @@ const Staff = () => {
     setEditForm({
       id: s.id,
       name: s.name,
+      email: (s as any).email || "",
       ic_number: s.ic_number,
       kwsp_number: s.kwsp_number || "",
       socso_number: s.socso_number || "",
@@ -206,7 +233,7 @@ const Staff = () => {
       : raw;
   };
 
-  const staffFormFields = (formData: any, setFormData: (v: any) => void, showEmail: boolean) => (
+  const staffFormFields = (formData: any, setFormData: (v: any) => void, showEmail: boolean, showEditEmail: boolean = false) => (
     <>
       {showEmail && (
         <div className="space-y-2">
@@ -219,6 +246,18 @@ const Staff = () => {
             required
           />
           <p className="text-xs text-muted-foreground">An invitation email will be sent to this address.</p>
+        </div>
+      )}
+      {showEditEmail && (
+        <div className="space-y-2">
+          <Label>Email Address</Label>
+          <Input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="staff@example.com"
+          />
+          <p className="text-xs text-muted-foreground">Changing this will send confirmation to both old and new email.</p>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
