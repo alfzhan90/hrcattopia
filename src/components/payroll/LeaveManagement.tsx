@@ -27,7 +27,7 @@ const LeaveManagement = () => {
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-leave"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("staff_profiles").select("*").order("name");
+      const { data, error } = await supabase.from("staff_profiles").select("*").neq("employment_type", "Freelancer").order("name");
       if (error) throw error;
       return data as StaffProfile[];
     },

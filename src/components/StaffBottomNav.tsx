@@ -23,7 +23,7 @@ const StaffBottomNav = () => {
   const tabs = [
     { to: "/staff/dashboard", icon: Home, label: "Home" },
     { to: "/staff/logs", icon: ClipboardList, label: "My Logs" },
-    { to: "/staff/leave", icon: Calendar, label: "Leave" },
+    ...(!isFreelancer ? [{ to: "/staff/leave", icon: Calendar, label: "Leave" }] : []),
     isFreelancer
       ? { to: "/staff/invoices", icon: FileText, label: "My Invoices" }
       : { to: "/staff/payslips", icon: FileText, label: "Payslips" },
