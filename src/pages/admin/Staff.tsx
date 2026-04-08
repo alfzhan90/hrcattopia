@@ -17,7 +17,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save, Pencil } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock } from "lucide-react";
+import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
+import RoleTimeline from "@/components/staff/RoleTimeline";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
