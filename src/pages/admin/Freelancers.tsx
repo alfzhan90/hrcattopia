@@ -102,6 +102,8 @@ const Freelancers = () => {
   const [search, setSearch] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const { data: companySettings } = useCompanySettings();
+  const [wizardStaff, setWizardStaff] = useState<FreelancerExt | null>(null);
+  const [timelineStaff, setTimelineStaff] = useState<FreelancerExt | null>(null);
 
   const [form, setForm] = useState({
     name: "", email: "", ic_number: "", phone_number: "", bank_name: "", bank_account_number: "",
