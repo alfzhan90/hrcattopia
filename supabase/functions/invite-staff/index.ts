@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       .insert({
         user_id: newUserId,
         name,
+        email,
         ic_number,
         kwsp_number: kwsp_number || null,
         socso_number: socso_number || null,
