@@ -48,7 +48,7 @@ export default function EmploymentStatusWizard({ staff, open, onOpenChange }: Pr
   const [exitType, setExitType] = useState<"resigned" | "terminated">("resigned");
 
   // Reactivate form
-  const [reactivateRole, setReactivateRole] = useState(staff.employment_type);
+  const [reactivateRole, setReactivateRole] = useState<string>(staff.employment_type);
   const [reactivateRate, setReactivateRate] = useState(String(staff.base_rate));
   const [reactivateReason, setReactivateReason] = useState("");
 
