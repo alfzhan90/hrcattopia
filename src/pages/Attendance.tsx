@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock } from "lucide-react";
 import { GoogleMap, useJsApiLoader, Circle, Marker } from "@react-google-maps/api";
-import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
+import { haversineDistance, generateDeviceFingerprint, isSameDevice, getCurrentPosition } from "@/lib/geo";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -145,7 +145,7 @@ const Attendance = () => {
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
 
-      if (currentDeviceId && currentDeviceId !== fingerprint) {
+      if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
         setDeviceError("Security Error: This account is locked to another device. Please contact Admin.");
         throw new Error("Device mismatch");
       }

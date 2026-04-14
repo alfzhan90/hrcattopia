@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogOut, Smartphone, Building2, User, CreditCard } from "lucide-react";
-import { generateDeviceFingerprint } from "@/lib/geo";
+import { generateDeviceFingerprint, isSameDevice } from "@/lib/geo";
 
 const StaffProfile = () => {
   const { user, signOut } = useAuth();
@@ -33,7 +33,7 @@ const StaffProfile = () => {
   }
 
   const currentFingerprint = generateDeviceFingerprint();
-  const deviceVerified = profile.device_id === currentFingerprint;
+  const deviceVerified = isSameDevice(profile.device_id, currentFingerprint);
 
   const fields = [
     { icon: User, label: "Staff ID", value: profile.staff_id },
