@@ -33,7 +33,7 @@ const StaffProfile = () => {
   }
 
   const currentFingerprint = generateDeviceFingerprint();
-  const deviceVerified = profile.device_id === currentFingerprint;
+  const deviceVerified = isSameDevice(profile.device_id, currentFingerprint);
 
   const fields = [
     { icon: User, label: "Staff ID", value: profile.staff_id },
