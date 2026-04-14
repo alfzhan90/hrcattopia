@@ -110,6 +110,18 @@ export function isSameDevice(stored: string | null, current: string): boolean {
 }
 
 /**
+ * Clear the locally stored device token.
+ * Call this when the server indicates a binding reset / 403.
+ */
+export function clearDeviceToken(): void {
+  try {
+    localStorage.removeItem(DEVICE_TOKEN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
+/**
  * Get current position as a promise.
  */
 export function getCurrentPosition(): Promise<GeolocationPosition> {

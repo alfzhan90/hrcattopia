@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
-import { haversineDistance, generateDeviceFingerprint, getCurrentPosition } from "@/lib/geo";
+import { haversineDistance, generateDeviceFingerprint, isSameDevice, clearDeviceToken, getCurrentPosition } from "@/lib/geo";
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
@@ -193,7 +193,8 @@ const StaffHome = () => {
 
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
-      if (currentDeviceId && currentDeviceId !== fingerprint) {
+      if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
+        clearDeviceToken();
         setDeviceError("This account is locked to another device. Contact Admin.");
         throw new Error("Device mismatch");
       }
