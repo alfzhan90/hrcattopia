@@ -145,7 +145,7 @@ const Attendance = () => {
       const fingerprint = generateDeviceFingerprint();
       const currentDeviceId = resolvedDeviceId ?? profile.device_id;
 
-      if (currentDeviceId && currentDeviceId !== fingerprint) {
+      if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
         setDeviceError("Security Error: This account is locked to another device. Please contact Admin.");
         throw new Error("Device mismatch");
       }
