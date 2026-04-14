@@ -213,10 +213,13 @@ const Staff = () => {
 
   const toggleBindingMutation = useMutation({
     mutationFn: async ({ staffId, required }: { staffId: string; required: boolean }) => {
-      const updates: Record<string, any> = { is_device_binding_required: required };
-      // If disabling, also clear existing device binding to prevent stale errors
-      if (!required) updates.device_id = null;
-      const { error } = await supabase.from("staff_profiles").update(updates).eq("id", staffId);
+      if (!required) {
+        const { error } = await supabase.from("staff_profiles").update({ is_device_binding_required: required, device_id: null }).eq("id", staffId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("staff_profiles").update({ is_device_binding_required: required }).eq("id", staffId);
+        if (error) throw error;
+      }
       if (error) throw error;
     },
     onSuccess: () => {
