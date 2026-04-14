@@ -509,22 +509,32 @@ const Staff = () => {
                   <TableCell>
                     <Badge variant="secondary">{s.employment_type}</Badge>
                   </TableCell>
-                  <TableCell>
-                    {s.device_id ? (
+                   <TableCell>
+                    <div className="flex items-center gap-2">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="gap-1 cursor-help">
-                            <Smartphone className="h-3 w-3" />
-                            Bound
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Switch
+                              checked={s.is_device_binding_required}
+                              onCheckedChange={(checked) => toggleBindingMutation.mutate({ staffId: s.id, required: checked })}
+                              disabled={toggleBindingMutation.isPending}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {s.is_device_binding_required ? "Required" : "Off"}
+                            </span>
+                          </div>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-mono text-xs">{s.device_id}</p>
-                        </TooltipContent>
+                        <TooltipContent>Require Device Binding</TooltipContent>
                       </Tooltip>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Not set</span>
-                    )}
+                      {s.is_device_binding_required && s.device_id ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Smartphone className="h-3 w-3" />
+                          Bound
+                        </Badge>
+                      ) : s.is_device_binding_required ? (
+                        <span className="text-xs text-muted-foreground">Not set</span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
