@@ -211,6 +211,23 @@ const Staff = () => {
     },
   });
 
+  const toggleBindingMutation = useMutation({
+    mutationFn: async ({ staffId, required }: { staffId: string; required: boolean }) => {
+      const updates: Record<string, any> = { is_device_binding_required: required };
+      // If disabling, also clear existing device binding to prevent stale errors
+      if (!required) updates.device_id = null;
+      const { error } = await supabase.from("staff_profiles").update(updates).eq("id", staffId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      toast({ title: "Updated", description: "Device binding requirement updated." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
   const closeDialog = (clearForm = false) => {
     setDialogOpen(false);
     if (clearForm) clearDraft();
