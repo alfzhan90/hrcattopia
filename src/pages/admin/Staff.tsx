@@ -547,7 +547,7 @@ const Staff = () => {
                       <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)} title="View timeline">
                         <Clock className="h-4 w-4" />
                       </Button>
-                      {s.device_id && (
+                      {s.is_device_binding_required && s.device_id && (
                         <Button
                           size="sm"
                           variant="ghost"
