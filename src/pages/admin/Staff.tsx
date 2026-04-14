@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
 import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
 import type { Tables } from "@/integrations/supabase/types";
@@ -204,6 +205,25 @@ const Staff = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       toast({ title: "Device reset", description: "Staff member can now register a new device." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleBindingMutation = useMutation({
+    mutationFn: async ({ staffId, required }: { staffId: string; required: boolean }) => {
+      if (!required) {
+        const { error } = await supabase.from("staff_profiles").update({ is_device_binding_required: required, device_id: null }).eq("id", staffId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("staff_profiles").update({ is_device_binding_required: required }).eq("id", staffId);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      toast({ title: "Updated", description: "Device binding requirement updated." });
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -489,22 +509,32 @@ const Staff = () => {
                   <TableCell>
                     <Badge variant="secondary">{s.employment_type}</Badge>
                   </TableCell>
-                  <TableCell>
-                    {s.device_id ? (
+                   <TableCell>
+                    <div className="flex items-center gap-2">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <Badge variant="outline" className="gap-1 cursor-help">
-                            <Smartphone className="h-3 w-3" />
-                            Bound
-                          </Badge>
+                          <div className="flex items-center gap-1.5">
+                            <Switch
+                              checked={s.is_device_binding_required}
+                              onCheckedChange={(checked) => toggleBindingMutation.mutate({ staffId: s.id, required: checked })}
+                              disabled={toggleBindingMutation.isPending}
+                            />
+                            <span className="text-xs text-muted-foreground">
+                              {s.is_device_binding_required ? "Required" : "Off"}
+                            </span>
+                          </div>
                         </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="font-mono text-xs">{s.device_id}</p>
-                        </TooltipContent>
+                        <TooltipContent>Require Device Binding</TooltipContent>
                       </Tooltip>
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Not set</span>
-                    )}
+                      {s.is_device_binding_required && s.device_id ? (
+                        <Badge variant="outline" className="gap-1">
+                          <Smartphone className="h-3 w-3" />
+                          Bound
+                        </Badge>
+                      ) : s.is_device_binding_required ? (
+                        <span className="text-xs text-muted-foreground">Not set</span>
+                      ) : null}
+                    </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
@@ -517,7 +547,7 @@ const Staff = () => {
                       <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)} title="View timeline">
                         <Clock className="h-4 w-4" />
                       </Button>
-                      {s.device_id && (
+                      {s.is_device_binding_required && s.device_id && (
                         <Button
                           size="sm"
                           variant="ghost"

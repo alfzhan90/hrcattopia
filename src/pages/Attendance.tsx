@@ -114,6 +114,7 @@ const Attendance = () => {
   useEffect(() => {
     if (!user || !profile) return;
     if (profile.user_id !== user.id) return;
+    if (!profile.is_device_binding_required) return;
     if (profile.device_id || resolvedDeviceId || isBindingDevice) return;
 
     bindDevice();
@@ -142,27 +143,30 @@ const Attendance = () => {
       if (!profile) throw new Error("Staff profile not found.");
       if (!profile.branch_id || !branch) throw new Error("No branch assigned.");
 
-      const fingerprint = generateDeviceFingerprint();
-      const currentDeviceId = resolvedDeviceId ?? profile.device_id;
+      // Device binding check — skip entirely if not required
+      if (profile.is_device_binding_required) {
+        const fingerprint = generateDeviceFingerprint();
+        const currentDeviceId = resolvedDeviceId ?? profile.device_id;
 
-      if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
-        clearDeviceToken();
-        setDeviceError("Security Error: This account is locked to another device. Please contact Admin.");
-        throw new Error("Device mismatch");
-      }
-
-      if (!currentDeviceId) {
-        const { error: deviceSaveError } = await supabase
-          .from("staff_profiles")
-          .update({ device_id: fingerprint })
-          .eq("id", profile.id)
-          .eq("user_id", user!.id);
-
-        if (deviceSaveError) {
-          throw new Error(`Device binding failed: ${deviceSaveError.message}`);
+        if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
+          clearDeviceToken();
+          setDeviceError("Security Error: This account is locked to another device. Please contact Admin.");
+          throw new Error("Device mismatch");
         }
 
-        setResolvedDeviceId(fingerprint);
+        if (!currentDeviceId) {
+          const { error: deviceSaveError } = await supabase
+            .from("staff_profiles")
+            .update({ device_id: fingerprint })
+            .eq("id", profile.id)
+            .eq("user_id", user!.id);
+
+          if (deviceSaveError) {
+            throw new Error(`Device binding failed: ${deviceSaveError.message}`);
+          }
+
+          setResolvedDeviceId(fingerprint);
+        }
       }
 
       const pos = await getCurrentPosition();

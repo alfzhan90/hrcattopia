@@ -154,7 +154,7 @@ const StaffHome = () => {
   });
 
   useEffect(() => {
-    if (!user || !profile || profile.device_id || resolvedDeviceId || bindDeviceMutation.isPending) return;
+    if (!user || !profile || !profile.is_device_binding_required || profile.device_id || resolvedDeviceId || bindDeviceMutation.isPending) return;
     bindDeviceMutation.mutate();
   }, [user, profile, resolvedDeviceId, bindDeviceMutation.isPending]);
 
@@ -191,16 +191,19 @@ const StaffHome = () => {
       const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
       if (!profile || !checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned.");
 
-      const fingerprint = generateDeviceFingerprint();
-      const currentDeviceId = resolvedDeviceId ?? profile.device_id;
-      if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
-        clearDeviceToken();
-        setDeviceError("This account is locked to another device. Contact Admin.");
-        throw new Error("Device mismatch");
-      }
-      if (!currentDeviceId) {
-        await supabase.from("staff_profiles").update({ device_id: fingerprint }).eq("id", profile.id).eq("user_id", user!.id);
-        setResolvedDeviceId(fingerprint);
+      // Device binding check — skip if not required
+      if (profile.is_device_binding_required) {
+        const fingerprint = generateDeviceFingerprint();
+        const currentDeviceId = resolvedDeviceId ?? profile.device_id;
+        if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
+          clearDeviceToken();
+          setDeviceError("This account is locked to another device. Contact Admin.");
+          throw new Error("Device mismatch");
+        }
+        if (!currentDeviceId) {
+          await supabase.from("staff_profiles").update({ device_id: fingerprint }).eq("id", profile.id).eq("user_id", user!.id);
+          setResolvedDeviceId(fingerprint);
+        }
       }
 
       const pos = await getCurrentPosition();
