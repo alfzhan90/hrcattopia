@@ -220,7 +220,6 @@ const Staff = () => {
         const { error } = await supabase.from("staff_profiles").update({ is_device_binding_required: required }).eq("id", staffId);
         if (error) throw error;
       }
-      if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
