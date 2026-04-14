@@ -44,7 +44,53 @@ Deno.serve(async (req) => {
       });
     }
 
-    const { staff_profile_id, new_email } = await req.json();
+    const body = await req.json();
+    const { action } = body;
+
+    // Resend invitation/verification action
+    if (action === "resend_invite") {
+      const { staff_profile_id } = body;
+      if (!staff_profile_id) {
+        return new Response(JSON.stringify({ error: "staff_profile_id is required" }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: profile } = await adminClient
+        .from("staff_profiles").select("user_id, email")
+        .eq("id", staff_profile_id).single();
+
+      if (!profile || !profile.email) {
+        return new Response(JSON.stringify({ error: "Profile or email not found" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Re-invite the user by generating a new invite link
+      const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(profile.email);
+
+      if (inviteError) {
+        // If user already confirmed, try generating a magic link instead
+        if (inviteError.message?.includes("already been registered")) {
+          // User already confirmed — just let admin know
+          return new Response(
+            JSON.stringify({ success: true, message: "User already verified. No action needed.", already_verified: true }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        return new Response(JSON.stringify({ error: inviteError.message }), {
+          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, message: "Verification email resent successfully" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Default action: update email
+    const { staff_profile_id, new_email } = body;
 
     if (!staff_profile_id || !new_email) {
       return new Response(JSON.stringify({ error: "staff_profile_id and new_email are required" }), {
@@ -63,10 +109,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Update auth email using admin API
+    // Force-update auth email instantly (no confirmation required for admin actions)
     const { error: authError } = await adminClient.auth.admin.updateUserById(
       profile.user_id,
-      { email: new_email }
+      { 
+        email: new_email,
+        email_confirm: true,  // Instantly confirm — admin override
+      }
     );
 
     if (authError) {
