@@ -11,8 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Pencil, FileText, Download, ArrowRightLeft, Clock } from "lucide-react";
+import { Plus, Search, Pencil, FileText, Download, ArrowRightLeft, Clock, RefreshCw, Loader2 } from "lucide-react";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
 import { format } from "date-fns";
@@ -49,9 +50,8 @@ function computeItemizedHours(
     const mult = holidayMap.get(logDate);
 
     if (mult) {
-      // All hours on a holiday get the holiday rate
       holidayHours += netHours;
-      holidayMultiplier = mult; // use the last seen multiplier (they should be consistent)
+      holidayMultiplier = mult;
     } else if (otEnabled && netHours > 8) {
       standardHours += 8;
       otHours += netHours - 8;
@@ -137,7 +137,6 @@ const Freelancers = () => {
     },
   });
 
-  // Holidays for rate calculation
   const period = getPayPeriod(selectedMonth);
   const { data: holidays = [] } = useQuery({
     queryKey: ["holidays-for-invoices", selectedMonth],
@@ -208,7 +207,7 @@ const Freelancers = () => {
   const updateMutation = useMutation({
     mutationFn: async (values: NonNullable<typeof editForm>) => {
       const original = freelancers.find((f) => f.id === values.id);
-      const originalEmail = (original as any)?.email || "";
+      const originalEmail = original?.email || "";
 
       const { error } = await supabase.from("staff_profiles").update({
         name: values.name, ic_number: values.ic_number,
@@ -234,8 +233,8 @@ const Freelancers = () => {
       queryClient.invalidateQueries({ queryKey: ["freelancers"] });
       if (result?.emailUpdated) {
         toast({
-          title: "✨ Email Update Initiated",
-          description: "Confirmation links have been sent to both the old and new email addresses. The change will reflect once verified.",
+          title: "✨ Identity Updated",
+          description: "Email has been changed instantly. The new email is now active.",
           className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
         });
       } else {
@@ -244,6 +243,35 @@ const Freelancers = () => {
       setEditDialogOpen(false);
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: async (staffProfileId: string) => {
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: { action: "resend_invite", staff_profile_id: staffProfileId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.already_verified) {
+        toast({
+          title: "✅ Already Verified",
+          description: "This user has already confirmed their email address.",
+          className: "bg-emerald-500/10 border-emerald-500 text-foreground",
+        });
+      } else {
+        toast({
+          title: "✨ Verification Resent",
+          description: "A fresh verification link has been sent to the freelancer's email address.",
+          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
   });
 
   const generateInvoiceMutation = useMutation({
@@ -255,7 +283,6 @@ const Freelancers = () => {
       const { lineItems, totalHours, totalPayable } = computeItemizedHours(logs, holidays, baseRate, otEnabled);
       const invoiceNumber = `INV-${freelancer.staff_id}-${selectedMonth.replace("-", "")}`;
 
-      // Store line items as JSON in service_description
       const serviceDesc = lineItems.length > 1
         ? lineItems.map((li) => `${li.description}: ${li.hours.toFixed(1)}h`).join(" | ")
         : "Casual Labour Services";
@@ -273,7 +300,6 @@ const Freelancers = () => {
       } as any, { onConflict: "staff_profile_id,month" });
       if (error) throw error;
 
-      // Store line items in localStorage for PDF generation (temp solution since DB doesn't have a JSON column)
       localStorage.setItem(`invoice-items-${freelancer.id}-${selectedMonth}`, JSON.stringify(lineItems));
     },
     onSuccess: () => {
@@ -284,7 +310,6 @@ const Freelancers = () => {
   });
 
   const downloadInvoice = async (invoice: any) => {
-    // Try to get stored line items
     const storedItems = localStorage.getItem(`invoice-items-${invoice.staff_profile_id}-${format(new Date(invoice.month), "yyyy-MM")}`);
     const lineItems: InvoiceLineItem[] = storedItems ? JSON.parse(storedItems) : [];
 
@@ -399,7 +424,7 @@ const Freelancers = () => {
                   <TableHead>Rate/hr</TableHead>
                   <TableHead>OT Rates</TableHead>
                   <TableHead>Cycle Hours</TableHead>
-                  <TableHead className="w-[80px]">Actions</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -413,7 +438,12 @@ const Freelancers = () => {
                     return (
                       <TableRow key={f.id}>
                         <TableCell className="font-mono text-sm">{f.staff_id}</TableCell>
-                        <TableCell className="font-medium">{f.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <span>{f.name}</span>
+                          {f.employment_status === "resigned" || f.employment_status === "terminated" ? (
+                            <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
+                          ) : null}
+                        </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{f.ic_number}</TableCell>
                         <TableCell>{getBranchName(f.branch_id)}</TableCell>
                         <TableCell>RM {Number(f.base_rate).toFixed(2)}</TableCell>
@@ -429,11 +459,11 @@ const Freelancers = () => {
                           <div className="flex gap-1">
                             <Button size="sm" variant="ghost" onClick={() => {
                               setEditForm({
-                                id: f.id, name: f.name, email: (f as any).email || "",
+                                id: f.id, name: f.name, email: f.email || "",
                                 ic_number: f.ic_number,
-                                phone_number: (f as any).phone_number || "",
-                                bank_name: (f as any).bank_name || "",
-                                bank_account_number: (f as any).bank_account_number || "",
+                                phone_number: f.phone_number || "",
+                                bank_name: f.bank_name || "",
+                                bank_account_number: f.bank_account_number || "",
                                 base_rate: String(f.base_rate), branch_id: f.branch_id || "",
                                 freelancer_ot_enabled: f.freelancer_ot_enabled ?? false,
                               });
@@ -509,8 +539,29 @@ const Freelancers = () => {
             <form onSubmit={(e) => { e.preventDefault(); updateMutation.mutate(editForm); }} className="space-y-4">
               <div className="space-y-2">
                 <Label>Email Address</Label>
-                <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="freelancer@example.com" />
-                <p className="text-xs text-muted-foreground">Changing this will send confirmation to both old and new email.</p>
+                <div className="flex gap-2">
+                  <Input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} placeholder="freelancer@example.com" className="flex-1" />
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() => resendVerificationMutation.mutate(editForm.id)}
+                        disabled={resendVerificationMutation.isPending}
+                        className="shrink-0 border-[#D4AF37]/30 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                      >
+                        {resendVerificationMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                        ) : (
+                          <RefreshCw className="h-4 w-4 text-[#D4AF37]" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Resend verification email</TooltipContent>
+                  </Tooltip>
+                </div>
+                <p className="text-xs text-muted-foreground">Admin override — email change takes effect instantly.</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2"><Label>Full Name</Label><Input value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} required /></div>
@@ -531,7 +582,6 @@ const Freelancers = () => {
                   <SelectContent>{branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              {/* OT Rates Toggle */}
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div>
                   <p className="text-sm font-medium">Enable OT Rates</p>
@@ -544,7 +594,14 @@ const Freelancers = () => {
               </div>
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={() => setEditDialogOpen(false)}>Cancel</Button>
-                <Button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? "Saving..." : "Save"}</Button>
+                <Button type="submit" disabled={updateMutation.isPending}>
+                  {updateMutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                      Saving...
+                    </span>
+                  ) : "Save"}
+                </Button>
               </div>
             </form>
           )}
