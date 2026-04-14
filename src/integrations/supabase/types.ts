@@ -486,6 +486,7 @@ export type Database = {
           freelancer_ot_enabled: boolean
           ic_number: string
           id: string
+          is_device_binding_required: boolean
           kwsp_number: string | null
           leave_encashment_days: number
           mc_balance: number
@@ -517,6 +518,7 @@ export type Database = {
           freelancer_ot_enabled?: boolean
           ic_number: string
           id?: string
+          is_device_binding_required?: boolean
           kwsp_number?: string | null
           leave_encashment_days?: number
           mc_balance?: number
@@ -548,6 +550,7 @@ export type Database = {
           freelancer_ot_enabled?: boolean
           ic_number?: string
           id?: string
+          is_device_binding_required?: boolean
           kwsp_number?: string | null
           leave_encashment_days?: number
           mc_balance?: number
