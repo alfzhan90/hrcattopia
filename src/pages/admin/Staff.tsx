@@ -17,7 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2 } from "lucide-react";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
 import type { Tables } from "@/integrations/supabase/types";
@@ -58,7 +58,6 @@ const Staff = () => {
     ot_rate_per_hour: string;
     branch_id: string;
   } | null>(null);
-  const [emailUpdatePending, setEmailUpdatePending] = useState(false);
   const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
   const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
 
@@ -118,11 +117,9 @@ const Staff = () => {
 
   const updateMutation = useMutation({
     mutationFn: async (values: NonNullable<typeof editForm>) => {
-      // Find original staff to check if email changed
       const original = staff.find((s) => s.id === values.id);
-      const originalEmail = (original as any)?.email || "";
+      const originalEmail = original?.email || "";
 
-      // Update profile fields
       const { error } = await supabase
         .from("staff_profiles")
         .update({
@@ -138,7 +135,6 @@ const Staff = () => {
         .eq("id", values.id);
       if (error) throw error;
 
-      // If email changed, call the edge function
       if (values.email && values.email !== originalEmail) {
         const { data, error: fnError } = await supabase.functions.invoke("update-user-email", {
           body: { staff_profile_id: values.id, new_email: values.email },
@@ -153,8 +149,8 @@ const Staff = () => {
       queryClient.invalidateQueries({ queryKey: ["staff"] });
       if (result?.emailUpdated) {
         toast({
-          title: "✨ Email Update Initiated",
-          description: "Confirmation links have been sent to both the old and new email addresses. The change will reflect once verified.",
+          title: "✨ Identity Updated",
+          description: "Email has been changed instantly. The new email is now active.",
           className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
         });
       } else {
@@ -162,6 +158,35 @@ const Staff = () => {
       }
       setEditDialogOpen(false);
       setEditForm(null);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const resendVerificationMutation = useMutation({
+    mutationFn: async (staffProfileId: string) => {
+      const { data, error } = await supabase.functions.invoke("update-user-email", {
+        body: { action: "resend_invite", staff_profile_id: staffProfileId },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) throw new Error(data.error);
+      return data;
+    },
+    onSuccess: (data) => {
+      if (data?.already_verified) {
+        toast({
+          title: "✅ Already Verified",
+          description: "This user has already confirmed their email address.",
+          className: "bg-emerald-500/10 border-emerald-500 text-foreground",
+        });
+      } else {
+        toast({
+          title: "✨ Verification Resent",
+          description: "A fresh verification link has been sent to the staff member's email address.",
+          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+        });
+      }
     },
     onError: (error: any) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -204,7 +229,7 @@ const Staff = () => {
     setEditForm({
       id: s.id,
       name: s.name,
-      email: (s as any).email || "",
+      email: s.email || "",
       ic_number: s.ic_number,
       kwsp_number: s.kwsp_number || "",
       socso_number: s.socso_number || "",
@@ -255,13 +280,35 @@ const Staff = () => {
       {showEditEmail && (
         <div className="space-y-2">
           <Label>Email Address</Label>
-          <Input
-            type="email"
-            value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-            placeholder="staff@example.com"
-          />
-          <p className="text-xs text-muted-foreground">Changing this will send confirmation to both old and new email.</p>
+          <div className="flex gap-2">
+            <Input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              placeholder="staff@example.com"
+              className="flex-1"
+            />
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => resendVerificationMutation.mutate(formData.id)}
+                  disabled={resendVerificationMutation.isPending}
+                  className="shrink-0 border-[#D4AF37]/30 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                >
+                  {resendVerificationMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 text-[#D4AF37]" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Resend verification email</TooltipContent>
+            </Tooltip>
+          </div>
+          <p className="text-xs text-muted-foreground">Admin override — email change takes effect instantly.</p>
         </div>
       )}
       <div className="grid grid-cols-2 gap-4">
@@ -376,7 +423,12 @@ const Staff = () => {
               <div className="flex items-center gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditForm(null); }}>Cancel</Button>
                 <Button type="submit" disabled={updateMutation.isPending}>
-                  {updateMutation.isPending ? "Saving..." : "Save Changes"}
+                  {updateMutation.isPending ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                      Saving...
+                    </span>
+                  ) : "Save Changes"}
                 </Button>
               </div>
             </form>
@@ -425,8 +477,13 @@ const Staff = () => {
               filteredStaff.map((s) => (
                 <TableRow key={s.id}>
                   <TableCell className="font-mono text-sm">{s.staff_id}</TableCell>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">{(s as any).email || "—"}</TableCell>
+                  <TableCell className="font-medium">
+                    <span>{s.name}</span>
+                    {s.employment_status === "resigned" || s.employment_status === "terminated" ? (
+                      <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
+                    ) : null}
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.ic_number}</TableCell>
                   <TableCell>{getBranchName(s.branch_id)}</TableCell>
                   <TableCell>
