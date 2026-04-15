@@ -194,15 +194,20 @@ const Attendance = () => {
 
       const finalStatus = lateMinutes > 0 ? "late" : status;
 
-      const { error } = await supabase.from("attendance_logs").insert({
+      const { data: insertedRow, error } = await supabase.from("attendance_logs").insert({
         user_id: user!.id,
         branch_id: branch.id,
         check_in_lat: pos.coords.latitude,
         check_in_long: pos.coords.longitude,
         status: finalStatus as any,
         late_minutes: lateMinutes,
-      });
+      }).select().single();
       if (error) throw error;
+
+      // Fire Telegram notification via edge function (non-blocking)
+      supabase.functions.invoke("notify-attendance", {
+        body: { record: insertedRow },
+      }).catch((err) => console.warn("Telegram notification failed:", err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
