@@ -32,38 +32,63 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Look up staff name and branch name
+    // Create service-role client for lookups
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const { data: staffProfile } = await supabase
-      .from("staff_profiles")
-      .select("name, staff_id")
-      .eq("user_id", record.user_id)
-      .single();
+    // Lookup staff name by user_id
+    let staffName = record.user_id ?? "Unknown";
+    let staffId = "";
+    try {
+      const { data: staffProfile } = await supabase
+        .from("staff_profiles")
+        .select("name, staff_id")
+        .eq("user_id", record.user_id)
+        .single();
+      if (staffProfile) {
+        staffName = staffProfile.name;
+        staffId = staffProfile.staff_id ?? "";
+      }
+    } catch (e) {
+      console.warn("Staff lookup failed, using fallback:", e);
+    }
 
-    const { data: branch } = await supabase
-      .from("branches")
-      .select("name")
-      .eq("id", record.branch_id)
-      .single();
+    // Lookup branch name by branch_id
+    let branchName = record.branch_id ?? "Unknown";
+    try {
+      const { data: branch } = await supabase
+        .from("branches")
+        .select("name")
+        .eq("id", record.branch_id)
+        .single();
+      if (branch) {
+        branchName = branch.name;
+      }
+    } catch (e) {
+      console.warn("Branch lookup failed, using fallback:", e);
+    }
 
-    const staffName = staffProfile?.name ?? "Unknown";
-    const staffId = staffProfile?.staff_id ?? "";
-    const branchName = branch?.name ?? "Unknown";
-    const checkInTime = new Date(record.check_in_time).toLocaleString("en-MY", {
-      timeZone: "Asia/Kuala_Lumpur",
-    });
-    const status = record.status === "late" ? "⚠️ LATE" : "✅ On Time";
+    // Determine if check-in or check-out
+    const isCheckOut = !!record.check_out_time;
+    const actionEmoji = isCheckOut ? "🚩" : "✅";
+    const actionLabel = isCheckOut ? "Check-out" : "Check-in";
+
+    const eventTime = new Date(
+      isCheckOut ? record.check_out_time : record.check_in_time
+    ).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" });
+
+    const lateInfo =
+      !isCheckOut && record.late_minutes > 0
+        ? `\n⚠️ Late: ${record.late_minutes} min`
+        : "";
 
     const message =
-      `📋 <b>Attendance Logged</b>\n\n` +
-      `👤 <b>${staffName}</b> (${staffId})\n` +
+      `${actionEmoji} <b>Attendance ${actionLabel}</b>\n\n` +
+      `👤 Name: <b>${staffName}</b>${staffId ? ` (${staffId})` : ""}\n` +
       `📍 Branch: ${branchName}\n` +
-      `🕐 Check-in: ${checkInTime}\n` +
-      `${status}` +
-      (record.late_minutes > 0 ? ` (${record.late_minutes} min late)` : "");
+      `🕐 Time: ${eventTime}` +
+      lateInfo;
 
     const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
       method: "POST",
