@@ -204,10 +204,14 @@ const Attendance = () => {
       }).select().single();
       if (error) throw error;
 
-      // Fire Telegram notification via edge function (non-blocking)
+      // Fire Telegram notification via edge function
+      console.log("[notify-attendance] Calling edge function with record:", insertedRow?.id);
       supabase.functions.invoke("notify-attendance", {
         body: { record: insertedRow },
-      }).catch((err) => console.warn("Telegram notification failed:", err));
+      }).then((res) => {
+        console.log("[notify-attendance] Check-in response:", res);
+        if (res.error) console.error("[notify-attendance] Check-in error:", res.error);
+      }).catch((err) => console.error("[notify-attendance] Check-in exception:", err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
