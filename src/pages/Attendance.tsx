@@ -204,10 +204,14 @@ const Attendance = () => {
       }).select().single();
       if (error) throw error;
 
-      // Fire Telegram notification via edge function (non-blocking)
+      // Fire Telegram notification via edge function
+      console.log("[notify-attendance] Calling edge function with record:", insertedRow?.id);
       supabase.functions.invoke("notify-attendance", {
         body: { record: insertedRow },
-      }).catch((err) => console.warn("Telegram notification failed:", err));
+      }).then((res) => {
+        console.log("[notify-attendance] Check-in response:", res);
+        if (res.error) console.error("[notify-attendance] Check-in error:", res.error);
+      }).catch((err) => console.error("[notify-attendance] Check-in exception:", err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
@@ -235,17 +239,35 @@ const Attendance = () => {
       const regularHours = Math.min(netHours, 8);
       const otHours = calcDailyOt(netHours);
 
+      const updatedRecord = {
+        ...activeLog,
+        check_out_time: now.toISOString(),
+        rest_hours: Math.round(restHours * 100) / 100,
+        net_hours: Math.round(netHours * 100) / 100,
+        regular_hours: Math.round(regularHours * 100) / 100,
+        ot_hours: Math.round(otHours * 100) / 100,
+      };
+
       const { error } = await supabase
         .from("attendance_logs")
         .update({
-          check_out_time: now.toISOString(),
-          rest_hours: Math.round(restHours * 100) / 100,
-          net_hours: Math.round(netHours * 100) / 100,
-          regular_hours: Math.round(regularHours * 100) / 100,
-          ot_hours: Math.round(otHours * 100) / 100,
+          check_out_time: updatedRecord.check_out_time,
+          rest_hours: updatedRecord.rest_hours,
+          net_hours: updatedRecord.net_hours,
+          regular_hours: updatedRecord.regular_hours,
+          ot_hours: updatedRecord.ot_hours,
         })
         .eq("id", activeLog.id);
       if (error) throw error;
+
+      // Fire Telegram notification for check-out
+      console.log("[notify-attendance] Calling edge function for check-out:", activeLog.id);
+      supabase.functions.invoke("notify-attendance", {
+        body: { record: updatedRecord },
+      }).then((res) => {
+        console.log("[notify-attendance] Check-out response:", res);
+        if (res.error) console.error("[notify-attendance] Check-out error:", res.error);
+      }).catch((err) => console.error("[notify-attendance] Check-out exception:", err));
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
