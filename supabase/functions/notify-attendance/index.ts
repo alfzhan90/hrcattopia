@@ -1,18 +1,36 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
+const ALLOWED_ORIGIN_PATTERNS = [
+  /^https:\/\/.*\.lovable\.app$/,
+  /^https:\/\/.*\.lovableproject\.com$/,
+];
+
+const getCorsHeaders = (origin: string | null) => ({
+  "Access-Control-Allow-Origin": origin && ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin)) ? origin : "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
+});
+
+const escapeHtml = (value: string) =>
+  value
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req.headers.get("origin"));
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    const rawBody = await req.text();
+    const body = rawBody ? JSON.parse(rawBody) : {};
+    console.log("Function received data:", body);
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
@@ -22,72 +40,99 @@ Deno.serve(async (req) => {
     const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
     if (!TELEGRAM_CHAT_ID) throw new Error("TELEGRAM_CHAT_ID is not configured");
 
-    const body = await req.json();
-    const record = body.record;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    if (!supabaseUrl) throw new Error("SUPABASE_URL is not configured");
 
-    if (!record) {
+    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+    if (!serviceRoleKey) throw new Error("SUPABASE_SERVICE_ROLE_KEY is not configured");
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+
+    const incomingRecord = body?.record && typeof body.record === "object" ? body.record : body;
+    if (!incomingRecord || typeof incomingRecord !== "object") {
       return new Response(JSON.stringify({ error: "No record provided" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create service-role client for lookups
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    let record = incomingRecord as Record<string, unknown>;
 
-    // Lookup staff name by user_id
-    let staffName = record.user_id ?? "Unknown";
-    let staffId = "";
-    try {
-      const { data: staffProfile } = await supabase
-        .from("staff_profiles")
-        .select("name, staff_id")
-        .eq("user_id", record.user_id)
-        .single();
-      if (staffProfile) {
-        staffName = staffProfile.name;
-        staffId = staffProfile.staff_id ?? "";
+    if (record.id && (!record.user_id || !record.branch_id || (!record.check_in_time && !record.check_out_time))) {
+      const { data: attendanceRow, error: attendanceError } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("id", String(record.id))
+        .maybeSingle();
+
+      if (attendanceError) {
+        throw new Error(`Attendance lookup failed: ${attendanceError.message}`);
       }
-    } catch (e) {
-      console.warn("Staff lookup failed, using fallback:", e);
+
+      if (attendanceRow) {
+        record = { ...attendanceRow, ...record };
+      }
     }
 
-    // Lookup branch name by branch_id
-    let branchName = record.branch_id ?? "Unknown";
-    try {
-      const { data: branch } = await supabase
-        .from("branches")
-        .select("name")
-        .eq("id", record.branch_id)
-        .single();
-      if (branch) {
-        branchName = branch.name;
-      }
-    } catch (e) {
-      console.warn("Branch lookup failed, using fallback:", e);
+    if (!record.user_id || !record.branch_id) {
+      return new Response(JSON.stringify({ error: "Attendance record is missing user_id or branch_id" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Determine if check-in or check-out
-    const isCheckOut = !!record.check_out_time;
+    let staffName = String(record.user_id);
+    let staffId = String(record.user_id);
+    const { data: staffProfile, error: staffError } = await supabase
+      .from("staff_profiles")
+      .select("name, staff_id")
+      .eq("user_id", String(record.user_id))
+      .maybeSingle();
+
+    if (staffError) {
+      console.warn("Staff lookup failed, using fallback:", staffError.message);
+    } else if (staffProfile) {
+      staffName = staffProfile.name || staffProfile.staff_id || String(record.user_id);
+      staffId = staffProfile.staff_id || String(record.user_id);
+    }
+
+    let branchName = String(record.branch_id);
+    const { data: branch, error: branchError } = await supabase
+      .from("branches")
+      .select("name")
+      .eq("id", String(record.branch_id))
+      .maybeSingle();
+
+    if (branchError) {
+      console.warn("Branch lookup failed, using fallback:", branchError.message);
+    } else if (branch?.name) {
+      branchName = branch.name;
+    }
+
+    const isCheckOut = Boolean(record.check_out_time);
     const actionEmoji = isCheckOut ? "🚩" : "✅";
     const actionLabel = isCheckOut ? "Check-out" : "Check-in";
+    const eventTimestamp = record.check_out_time ?? record.check_in_time;
 
-    const eventTime = new Date(
-      isCheckOut ? record.check_out_time : record.check_in_time
-    ).toLocaleString("en-MY", { timeZone: "Asia/Kuala_Lumpur" });
+    if (!eventTimestamp) {
+      return new Response(JSON.stringify({ error: "Attendance record is missing check_in_time/check_out_time" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-    const lateInfo =
-      !isCheckOut && record.late_minutes > 0
-        ? `\n⚠️ Late: ${record.late_minutes} min`
-        : "";
+    const eventTime = new Date(String(eventTimestamp)).toLocaleString("en-MY", {
+      timeZone: "Asia/Kuala_Lumpur",
+    });
+
+    const lateMinutes = Number(record.late_minutes ?? 0);
+    const lateInfo = !isCheckOut && lateMinutes > 0 ? `\n⚠️ Late: ${lateMinutes} min` : "";
 
     const message =
       `${actionEmoji} <b>Attendance ${actionLabel}</b>\n\n` +
-      `👤 Name: <b>${staffName}</b>${staffId ? ` (${staffId})` : ""}\n` +
-      `📍 Branch: ${branchName}\n` +
-      `🕐 Time: ${eventTime}` +
+      `👤 Name: <b>${escapeHtml(staffName)}</b>${staffId && staffId !== staffName ? ` (${escapeHtml(staffId)})` : ""}\n` +
+      `📍 Branch: ${escapeHtml(branchName)}\n` +
+      `🕐 Time: ${escapeHtml(eventTime)}` +
       lateInfo;
 
     const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
@@ -114,10 +159,11 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err) {
-    console.error("notify-attendance error:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("notify-attendance error:", message);
+    return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      headers: { ...getCorsHeaders(req.headers.get("origin")), "Content-Type": "application/json" },
     });
   }
 });

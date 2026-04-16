@@ -248,7 +248,7 @@ const Attendance = () => {
         ot_hours: Math.round(otHours * 100) / 100,
       };
 
-      const { error } = await supabase
+      const { data: updatedRow, error } = await supabase
         .from("attendance_logs")
         .update({
           check_out_time: updatedRecord.check_out_time,
@@ -257,13 +257,15 @@ const Attendance = () => {
           regular_hours: updatedRecord.regular_hours,
           ot_hours: updatedRecord.ot_hours,
         })
-        .eq("id", activeLog.id);
+        .eq("id", activeLog.id)
+        .select()
+        .single();
       if (error) throw error;
 
       // Fire Telegram notification for check-out
-      console.log("[notify-attendance] Calling edge function for check-out:", activeLog.id);
+      console.log("[notify-attendance] Calling edge function with record:", updatedRow?.id);
       supabase.functions.invoke("notify-attendance", {
-        body: { record: updatedRecord },
+        body: { record: updatedRow },
       }).then((res) => {
         console.log("[notify-attendance] Check-out response:", res);
         if (res.error) console.error("[notify-attendance] Check-out error:", res.error);
