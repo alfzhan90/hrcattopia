@@ -33,6 +33,7 @@ const Schedules = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [form, setForm] = useState({
     staff_profile_id: "",
     branch_id: "",
