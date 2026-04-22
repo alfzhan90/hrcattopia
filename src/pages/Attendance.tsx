@@ -194,6 +194,28 @@ const Attendance = () => {
 
       const finalStatus = lateMinutes > 0 ? "late" : status;
 
+      // Schedule matching: look for a planned shift today at this branch
+      // within a 30-minute buffer of the start time.
+      const todayStr = now.toISOString().split("T")[0];
+      const { data: todaySchedules } = await supabase
+        .from("schedules")
+        .select("start_time, end_time")
+        .eq("staff_profile_id", profile.id)
+        .eq("branch_id", branch.id)
+        .eq("date", todayStr);
+
+      const BUFFER_MS = 30 * 60 * 1000;
+      const nowMs = now.getTime();
+      const matchedShift = (todaySchedules ?? []).some((s) => {
+        const [sh, sm] = (s.start_time as string).split(":").map(Number);
+        const shiftStart = new Date(now);
+        shiftStart.setHours(sh, sm ?? 0, 0, 0);
+        return Math.abs(nowMs - shiftStart.getTime()) <= BUFFER_MS;
+      });
+
+      const paymentStatus: "automatic" | "pending_approval" =
+        matchedShift ? "automatic" : "pending_approval";
+
       const { data: insertedRow, error } = await supabase.from("attendance_logs").insert({
         user_id: user!.id,
         branch_id: branch.id,
@@ -201,7 +223,8 @@ const Attendance = () => {
         check_in_long: pos.coords.longitude,
         status: finalStatus as any,
         late_minutes: lateMinutes,
-      }).select().single();
+        payment_status: paymentStatus,
+      } as any).select().single();
       if (error) throw error;
 
       // Fire Telegram notification via edge function
@@ -212,11 +235,20 @@ const Attendance = () => {
         console.log("[notify-attendance] Check-in response:", res);
         if (res.error) console.error("[notify-attendance] Check-in error:", res.error);
       }).catch((err) => console.error("[notify-attendance] Check-in exception:", err));
+
+      return { paymentStatus };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
-      toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      if (result?.paymentStatus === "pending_approval") {
+        toast({
+          title: "Emergency check-in detected",
+          description: "This shift requires manager approval for pay calculation.",
+        });
+      } else {
+        toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      }
     },
     onError: (err: Error) => {
       if (err.message !== "Device mismatch" && err.message !== "Out of range") {
