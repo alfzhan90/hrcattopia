@@ -148,14 +148,25 @@ const Schedules = () => {
     return m;
   }, [managedBranches]);
 
+  const filteredSchedules = useMemo(() => {
+    if (branchFilter === "all") return schedules;
+    return schedules.filter((s) => s.branch_id === branchFilter);
+  }, [schedules, branchFilter]);
+
   const schedulesByDate = useMemo(() => {
     const m: Record<string, Schedule[]> = {};
-    schedules.forEach((s) => {
+    filteredSchedules.forEach((s) => {
       if (!m[s.date]) m[s.date] = [];
       m[s.date].push(s);
     });
     return m;
-  }, [schedules]);
+  }, [filteredSchedules]);
+
+  const urgentThreshold = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 2); // today + next 2 days = 3 day window
+    return d;
+  }, [today]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
