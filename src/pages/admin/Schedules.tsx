@@ -1,0 +1,340 @@
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { CalendarDays, Plus, Trash2, Clock } from "lucide-react";
+import type { Tables } from "@/integrations/supabase/types";
+
+type Schedule = Tables<"schedules">;
+type StaffProfile = Tables<"staff_profiles">;
+type Branch = Tables<"branches">;
+
+const formatDate = (d: Date) => {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+const Schedules = () => {
+  const { user, role } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    staff_profile_id: "",
+    branch_id: "",
+    date: formatDate(new Date()),
+    start_time: "09:30",
+    end_time: "18:00",
+    notes: "",
+  });
+
+  // 14-day window
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
+  const endDate = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 13);
+    return d;
+  }, [today]);
+
+  const dateRange = useMemo(() => {
+    const arr: Date[] = [];
+    for (let i = 0; i < 14; i++) {
+      const d = new Date(today);
+      d.setDate(d.getDate() + i);
+      arr.push(d);
+    }
+    return arr;
+  }, [today]);
+
+  // Branches the user can manage
+  const { data: managedBranches = [] } = useQuery({
+    queryKey: ["managed-branches", user?.id, role],
+    queryFn: async () => {
+      if (role === "admin") {
+        const { data, error } = await supabase.from("branches").select("*").order("name");
+        if (error) throw error;
+        return data as Branch[];
+      }
+      // area_manager — fetch via assignments
+      const { data: assignments, error: aErr } = await supabase
+        .from("area_manager_branches")
+        .select("branch_id")
+        .eq("user_id", user!.id);
+      if (aErr) throw aErr;
+      const ids = (assignments ?? []).map((a) => a.branch_id);
+      if (ids.length === 0) return [] as Branch[];
+      const { data, error } = await supabase
+        .from("branches")
+        .select("*")
+        .in("id", ids)
+        .order("name");
+      if (error) throw error;
+      return data as Branch[];
+    },
+    enabled: !!user,
+  });
+
+  // Staff visible to user (filtered by managed branches for area managers)
+  const { data: staff = [] } = useQuery({
+    queryKey: ["sched-staff", role, managedBranches.map((b) => b.id).join(",")],
+    queryFn: async () => {
+      let q = supabase
+        .from("staff_profiles")
+        .select("*")
+        .eq("employment_status", "active")
+        .order("name");
+      if (role === "area_manager") {
+        const ids = managedBranches.map((b) => b.id);
+        if (ids.length === 0) return [] as StaffProfile[];
+        q = q.in("branch_id", ids);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as StaffProfile[];
+    },
+    enabled: !!user && (role === "admin" || managedBranches.length > 0),
+  });
+
+  const { data: schedules = [] } = useQuery({
+    queryKey: ["schedules", formatDate(today), formatDate(endDate), managedBranches.map((b) => b.id).join(",")],
+    queryFn: async () => {
+      let q = supabase
+        .from("schedules")
+        .select("*")
+        .gte("date", formatDate(today))
+        .lte("date", formatDate(endDate))
+        .order("date")
+        .order("start_time");
+      if (role === "area_manager") {
+        const ids = managedBranches.map((b) => b.id);
+        if (ids.length === 0) return [] as Schedule[];
+        q = q.in("branch_id", ids);
+      }
+      const { data, error } = await q;
+      if (error) throw error;
+      return data as Schedule[];
+    },
+    enabled: !!user && (role === "admin" || managedBranches.length > 0),
+  });
+
+  const staffMap = useMemo(() => {
+    const m: Record<string, StaffProfile> = {};
+    staff.forEach((s) => { m[s.id] = s; });
+    return m;
+  }, [staff]);
+
+  const branchMap = useMemo(() => {
+    const m: Record<string, Branch> = {};
+    managedBranches.forEach((b) => { m[b.id] = b; });
+    return m;
+  }, [managedBranches]);
+
+  const schedulesByDate = useMemo(() => {
+    const m: Record<string, Schedule[]> = {};
+    schedules.forEach((s) => {
+      if (!m[s.date]) m[s.date] = [];
+      m[s.date].push(s);
+    });
+    return m;
+  }, [schedules]);
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      if (!form.staff_profile_id || !form.branch_id || !form.date) {
+        throw new Error("Please fill all required fields.");
+      }
+      const { error } = await supabase.from("schedules").insert({
+        staff_profile_id: form.staff_profile_id,
+        branch_id: form.branch_id,
+        date: form.date,
+        start_time: form.start_time,
+        end_time: form.end_time,
+        notes: form.notes || null,
+        created_by: user!.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Shift scheduled" });
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+      setOpen(false);
+      setForm((f) => ({ ...f, notes: "" }));
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not schedule shift", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("schedules").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast({ title: "Shift removed" });
+      queryClient.invalidateQueries({ queryKey: ["schedules"] });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Could not delete", description: err.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <CalendarDays className="h-6 w-6" /> Shift Planner
+          </h1>
+          <p className="text-muted-foreground">14-day schedule overview</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" /> Schedule Shift
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Schedule a Shift</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Staff Member</Label>
+                <Select value={form.staff_profile_id} onValueChange={(v) => setForm((f) => ({ ...f, staff_profile_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select staff" /></SelectTrigger>
+                  <SelectContent>
+                    {staff.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} ({s.staff_id})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Branch</Label>
+                <Select value={form.branch_id} onValueChange={(v) => setForm((f) => ({ ...f, branch_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select branch" /></SelectTrigger>
+                  <SelectContent>
+                    {managedBranches.map((b) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Date</Label>
+                <Input
+                  type="date"
+                  min={formatDate(today)}
+                  max={formatDate(endDate)}
+                  value={form.date}
+                  onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label>Start</Label>
+                  <Input type="time" value={form.start_time} onChange={(e) => setForm((f) => ({ ...f, start_time: e.target.value }))} />
+                </div>
+                <div>
+                  <Label>End</Label>
+                  <Input type="time" value={form.end_time} onChange={(e) => setForm((f) => ({ ...f, end_time: e.target.value }))} />
+                </div>
+              </div>
+              <div>
+                <Label>Notes (optional)</Label>
+                <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
+                {createMutation.isPending ? "Saving..." : "Save Shift"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {role === "area_manager" && managedBranches.length === 0 && (
+        <Card>
+          <CardContent className="pt-6 text-sm text-muted-foreground">
+            You haven't been assigned to any branches yet. An admin must assign you to branches before you can schedule shifts.
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+        {dateRange.map((d) => {
+          const key = formatDate(d);
+          const items = schedulesByDate[key] || [];
+          const isToday = key === formatDate(today);
+          return (
+            <Card key={key} className={isToday ? "border-primary" : ""}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <span>
+                    {d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                  </span>
+                  {isToday && <Badge variant="default" className="text-xs">Today</Badge>}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {items.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No shifts</p>
+                ) : (
+                  items.map((s) => {
+                    const sp = staffMap[s.staff_profile_id];
+                    const br = branchMap[s.branch_id];
+                    return (
+                      <div key={s.id} className="text-xs border rounded p-2 flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{sp?.name ?? "—"}</p>
+                          <p className="text-muted-foreground truncate">{br?.name ?? "—"}</p>
+                          <p className="text-muted-foreground flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => deleteMutation.mutate(s.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+export default Schedules;

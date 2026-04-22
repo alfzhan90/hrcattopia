@@ -6,20 +6,29 @@ import { Button } from "@/components/ui/button";
 import {
   Building2, Users, LogOut, ClipboardList, DollarSign, Settings,
   FileSpreadsheet, LayoutDashboard, UserCheck, Plus, UserPlus, Clock, Menu, X,
+  CalendarDays, CheckSquare,
 } from "lucide-react";
 import { useState } from "react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-const navItems = [
+const adminNavItems = [
   { to: "/admin/company", icon: Settings, label: "Company Settings" },
   { to: "/admin/branches", icon: Building2, label: "Branches" },
   { to: "/admin/staff", icon: Users, label: "Staff" },
   { to: "/admin/records", icon: FileSpreadsheet, label: "Attendance Records" },
   { to: "/admin/attendance", icon: ClipboardList, label: "Live Attendance" },
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
   { to: "/admin/freelancers", icon: UserCheck, label: "Freelancers" },
+  { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
+];
+
+const managerNavItems = [
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];
 
@@ -31,11 +40,12 @@ const dockItems = [
 ];
 
 const AdminLayout = () => {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const { data: companySettings } = useCompanySettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navItems = role === "area_manager" ? managerNavItems : adminNavItems;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
