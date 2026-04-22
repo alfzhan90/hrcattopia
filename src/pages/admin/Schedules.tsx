@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarDays, Plus, Trash2, Clock } from "lucide-react";
+import { CalendarDays, Plus, Trash2, Clock, AlertTriangle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Schedule = Tables<"schedules">;
@@ -33,6 +33,7 @@ const Schedules = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [branchFilter, setBranchFilter] = useState<string>("all");
   const [form, setForm] = useState({
     staff_profile_id: "",
     branch_id: "",
@@ -147,14 +148,32 @@ const Schedules = () => {
     return m;
   }, [managedBranches]);
 
+  // For area managers, default the filter to their first managed branch
+  useEffect(() => {
+    if (role === "area_manager" && branchFilter === "all" && managedBranches.length === 1) {
+      setBranchFilter(managedBranches[0].id);
+    }
+  }, [role, managedBranches, branchFilter]);
+
+  const filteredSchedules = useMemo(() => {
+    if (branchFilter === "all") return schedules;
+    return schedules.filter((s) => s.branch_id === branchFilter);
+  }, [schedules, branchFilter]);
+
   const schedulesByDate = useMemo(() => {
     const m: Record<string, Schedule[]> = {};
-    schedules.forEach((s) => {
+    filteredSchedules.forEach((s) => {
       if (!m[s.date]) m[s.date] = [];
       m[s.date].push(s);
     });
     return m;
-  }, [schedules]);
+  }, [filteredSchedules]);
+
+  const urgentThreshold = useMemo(() => {
+    const d = new Date(today);
+    d.setDate(d.getDate() + 2); // today + next 2 days = 3 day window
+    return d;
+  }, [today]);
 
   const createMutation = useMutation({
     mutationFn: async () => {
@@ -276,6 +295,27 @@ const Schedules = () => {
         </Dialog>
       </div>
 
+      {/* Branch filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <Label className="text-sm shrink-0">Filter by Branch</Label>
+        <Select value={branchFilter} onValueChange={setBranchFilter}>
+          <SelectTrigger className="w-full sm:w-[280px]">
+            <SelectValue placeholder="All branches" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Branches</SelectItem>
+            {managedBranches.map((b) => (
+              <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {branchFilter !== "all" && (
+          <p className="text-xs text-muted-foreground">
+            Showing shifts for {branchMap[branchFilter]?.name ?? "selected branch"}
+          </p>
+        )}
+      </div>
+
       {role === "area_manager" && managedBranches.length === 0 && (
         <Card>
           <CardContent className="pt-6 text-sm text-muted-foreground">
@@ -289,19 +329,39 @@ const Schedules = () => {
           const key = formatDate(d);
           const items = schedulesByDate[key] || [];
           const isToday = key === formatDate(today);
+          const isWithin3Days = d.getTime() <= urgentThreshold.getTime();
+          const isUrgent = isWithin3Days && items.length === 0;
           return (
-            <Card key={key} className={isToday ? "border-primary" : ""}>
+            <Card
+              key={key}
+              className={
+                isUrgent
+                  ? "border-2 border-destructive bg-destructive/5"
+                  : isToday
+                  ? "border-primary"
+                  : ""
+              }
+            >
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center justify-between">
+                <CardTitle className="text-sm flex items-center justify-between gap-2">
                   <span>
                     {d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
                   </span>
-                  {isToday && <Badge variant="default" className="text-xs">Today</Badge>}
+                  <div className="flex items-center gap-1">
+                    {isToday && <Badge variant="default" className="text-xs">Today</Badge>}
+                    {isUrgent && (
+                      <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" /> URGENT: No Staff
+                      </Badge>
+                    )}
+                  </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 {items.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No shifts</p>
+                  <p className={`text-xs ${isUrgent ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                    {isUrgent ? "No staff scheduled — fill ASAP" : "No shifts"}
+                  </p>
                 ) : (
                   items.map((s) => {
                     const sp = staffMap[s.staff_profile_id];
@@ -309,12 +369,15 @@ const Schedules = () => {
                     return (
                       <div key={s.id} className="text-xs border rounded p-2 flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="font-medium truncate">{sp?.name ?? "—"}</p>
-                          <p className="text-muted-foreground truncate">{br?.name ?? "—"}</p>
-                          <p className="text-muted-foreground flex items-center gap-1">
-                            <Clock className="h-3 w-3" />
-                            {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                          <p className="font-medium truncate">
+                            {sp?.name ?? "—"}: {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
                           </p>
+                          {branchFilter === "all" && (
+                            <p className="text-muted-foreground truncate flex items-center gap-1">
+                              <Clock className="h-3 w-3" />
+                              {br?.name ?? "—"}
+                            </p>
+                          )}
                         </div>
                         <Button
                           variant="ghost"
