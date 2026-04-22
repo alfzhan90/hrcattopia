@@ -27,6 +27,10 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   }
 
   if (requiredRole && role !== requiredRole) {
+    // Area managers can access admin routes (UI restricts what they see)
+    if (requiredRole === "admin" && role === "area_manager") {
+      return <>{children}</>;
+    }
     // Staff trying to access admin → redirect to staff dashboard
     if (role === "staff" && requiredRole === "admin") {
       return <Navigate to="/staff/dashboard" replace />;

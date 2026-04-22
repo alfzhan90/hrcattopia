@@ -48,6 +48,10 @@ const fetchRole = async (userId: string): Promise<Enums<"app_role"> | null> => {
     return "admin";
   }
 
+  if (roles.includes("area_manager")) {
+    return "area_manager";
+  }
+
   if (roles.includes("staff")) {
     return "staff";
   }
