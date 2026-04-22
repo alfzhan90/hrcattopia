@@ -39,7 +39,7 @@ const Schedules = () => {
     branch_id: "",
     date: formatDate(new Date()),
     start_time: "09:30",
-    end_time: "18:00",
+    end_time: "18:30",
     notes: "",
   });
 
