@@ -27,14 +27,14 @@ const Approvals = () => {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["approvals", filter],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("attendance_logs")
+      const { data, error } = await (supabase
+        .from("attendance_logs") as any)
         .select("*")
-        .eq("payment_status" as any, filter)
+        .eq("payment_status", filter)
         .order("check_in_time", { ascending: false })
         .limit(200);
       if (error) throw error;
-      return (data as any[]) as AttendanceLog[];
+      return (data ?? []) as AttendanceLog[];
     },
   });
 
