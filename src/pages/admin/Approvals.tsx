@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, Check, X, Clock, MapPin } from "lucide-react";
-import type { Tables, Enums } from "@/integrations/supabase/types";
+import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs"> & {
   payment_status?: "automatic" | "pending_approval" | "approved" | "rejected";
