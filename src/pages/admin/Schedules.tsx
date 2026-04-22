@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarDays, Plus, Trash2, Clock } from "lucide-react";
+import { CalendarDays, Plus, Trash2, Clock, AlertTriangle } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Schedule = Tables<"schedules">;
