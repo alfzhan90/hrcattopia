@@ -32,10 +32,16 @@ const managerNavItems = [
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];
 
-const dockItems = [
+const adminDockItems = [
   { to: "/admin/branches", icon: Building2, label: "Home" },
   { to: "/admin/attendance", icon: ClipboardList, label: "Attendance" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
+  { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
+];
+
+const areaManagerDockItems = [
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shifts" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];
 
@@ -46,6 +52,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const navItems = role === "area_manager" ? managerNavItems : adminNavItems;
+  const dockItems = role === "area_manager" ? areaManagerDockItems : adminDockItems;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
