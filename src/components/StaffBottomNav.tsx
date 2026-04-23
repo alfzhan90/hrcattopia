@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, Calendar, FileText, User, ClipboardList } from "lucide-react";
+import { Home, Calendar, FileText, User, ClipboardList, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const StaffBottomNav = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile-nav", user?.id],
@@ -19,11 +19,17 @@ const StaffBottomNav = () => {
   });
 
   const isFreelancer = profile?.employment_type === "Freelancer";
+  const isAreaManager = role === "area_manager";
 
   const tabs = [
     { to: "/staff/dashboard", icon: Home, label: "Home" },
     { to: "/staff/logs", icon: ClipboardList, label: "My Logs" },
-    ...(!isFreelancer ? [{ to: "/staff/leave", icon: Calendar, label: "Leave" }] : []),
+    ...(isAreaManager
+      ? [{ to: "/admin/schedules", icon: CalendarDays, label: "Shifts" }]
+      : []),
+    ...(!isFreelancer && !isAreaManager
+      ? [{ to: "/staff/leave", icon: Calendar, label: "Leave" }]
+      : []),
     isFreelancer
       ? { to: "/staff/invoices", icon: FileText, label: "My Invoices" }
       : { to: "/staff/payslips", icon: FileText, label: "Payslips" },
