@@ -23,6 +23,10 @@ const Login = () => {
     return <Navigate to="/admin/branches" replace />;
   }
 
+  if (!authLoading && user && role === "area_manager") {
+    return <Navigate to="/admin/schedules" replace />;
+  }
+
   if (!authLoading && user && role === "staff") {
     return <Navigate to="/staff/dashboard" replace />;
   }
