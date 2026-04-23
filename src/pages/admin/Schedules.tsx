@@ -320,13 +320,8 @@ const Schedules = () => {
         )}
       </div>
 
-      {role === "area_manager" && managedBranches.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            You haven't been assigned to any branches yet. An admin must assign you to branches before you can schedule shifts.
-          </CardContent>
-        </Card>
-      )}
+
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {dateRange.map((d) => {
