@@ -119,12 +119,8 @@ const Schedules = () => {
     return m;
   }, [managedBranches]);
 
-  // For area managers, default the filter to their first managed branch
-  useEffect(() => {
-    if (role === "area_manager" && branchFilter === "all" && managedBranches.length === 1) {
-      setBranchFilter(managedBranches[0].id);
-    }
-  }, [role, managedBranches, branchFilter]);
+  // Branch filter defaults to "all" for both admins and area managers
+
 
   const filteredSchedules = useMemo(() => {
     if (branchFilter === "all") return schedules;
