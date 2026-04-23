@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -65,79 +65,46 @@ const Schedules = () => {
     return arr;
   }, [today]);
 
-  // Branches the user can manage
+  // All branches — admins and area managers can plan across every branch
   const { data: managedBranches = [] } = useQuery({
-    queryKey: ["managed-branches", user?.id, role],
+    queryKey: ["planner-branches", user?.id],
     queryFn: async () => {
-      if (role === "admin") {
-        const { data, error } = await supabase.from("branches").select("*").order("name");
-        if (error) throw error;
-        return data as Branch[];
-      }
-      // area_manager — fetch via assignments; fall back to all branches if unassigned
-      const { data: assignments, error: aErr } = await supabase
-        .from("area_manager_branches")
-        .select("branch_id")
-        .eq("user_id", user!.id);
-      if (aErr) throw aErr;
-      const ids = (assignments ?? []).map((a) => a.branch_id);
-      if (ids.length === 0) {
-        const { data, error } = await supabase.from("branches").select("*").order("name");
-        if (error) throw error;
-        return data as Branch[];
-      }
-      const { data, error } = await supabase
-        .from("branches")
-        .select("*")
-        .in("id", ids)
-        .order("name");
+      const { data, error } = await supabase.from("branches").select("*").order("name");
       if (error) throw error;
       return data as Branch[];
     },
     enabled: !!user,
   });
 
-  // Staff visible to user (filtered by managed branches for area managers)
+  // All active staff (including freelancers) — visible to admins and area managers
   const { data: staff = [] } = useQuery({
-    queryKey: ["sched-staff", role, managedBranches.map((b) => b.id).join(",")],
+    queryKey: ["sched-staff-all"],
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("staff_profiles")
         .select("*")
         .eq("employment_status", "active")
         .order("name");
-      if (role === "area_manager") {
-        const ids = managedBranches.map((b) => b.id);
-        if (ids.length === 0) return [] as StaffProfile[];
-        q = q.in("branch_id", ids);
-      }
-      const { data, error } = await q;
       if (error) throw error;
       return data as StaffProfile[];
     },
-    enabled: !!user && (role === "admin" || managedBranches.length > 0),
+    enabled: !!user,
   });
 
   const { data: schedules = [] } = useQuery({
-    queryKey: ["schedules", formatDate(today), formatDate(endDate), managedBranches.map((b) => b.id).join(",")],
+    queryKey: ["schedules", formatDate(today), formatDate(endDate)],
     queryFn: async () => {
-      let q = supabase
+      const { data, error } = await supabase
         .from("schedules")
         .select("*")
         .gte("date", formatDate(today))
         .lte("date", formatDate(endDate))
         .order("date")
         .order("start_time");
-      if (role === "area_manager") {
-        const ids = managedBranches.map((b) => b.id);
-        if (ids.length === 0) return [] as Schedule[];
-        q = q.in("branch_id", ids);
-      }
-      const { data, error } = await q;
       if (error) throw error;
       return data as Schedule[];
     },
-    enabled: !!user && (role === "admin" || managedBranches.length > 0),
+    enabled: !!user,
   });
 
   const staffMap = useMemo(() => {
@@ -152,12 +119,8 @@ const Schedules = () => {
     return m;
   }, [managedBranches]);
 
-  // For area managers, default the filter to their first managed branch
-  useEffect(() => {
-    if (role === "area_manager" && branchFilter === "all" && managedBranches.length === 1) {
-      setBranchFilter(managedBranches[0].id);
-    }
-  }, [role, managedBranches, branchFilter]);
+  // Branch filter defaults to "all" for both admins and area managers
+
 
   const filteredSchedules = useMemo(() => {
     if (branchFilter === "all") return schedules;
