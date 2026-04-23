@@ -74,14 +74,18 @@ const Schedules = () => {
         if (error) throw error;
         return data as Branch[];
       }
-      // area_manager — fetch via assignments
+      // area_manager — fetch via assignments; fall back to all branches if unassigned
       const { data: assignments, error: aErr } = await supabase
         .from("area_manager_branches")
         .select("branch_id")
         .eq("user_id", user!.id);
       if (aErr) throw aErr;
       const ids = (assignments ?? []).map((a) => a.branch_id);
-      if (ids.length === 0) return [] as Branch[];
+      if (ids.length === 0) {
+        const { data, error } = await supabase.from("branches").select("*").order("name");
+        if (error) throw error;
+        return data as Branch[];
+      }
       const { data, error } = await supabase
         .from("branches")
         .select("*")
@@ -316,13 +320,8 @@ const Schedules = () => {
         )}
       </div>
 
-      {role === "area_manager" && managedBranches.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground">
-            You haven't been assigned to any branches yet. An admin must assign you to branches before you can schedule shifts.
-          </CardContent>
-        </Card>
-      )}
+
+
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
         {dateRange.map((d) => {
