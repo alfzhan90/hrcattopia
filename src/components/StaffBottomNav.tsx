@@ -41,8 +41,7 @@ const StaffBottomNav = () => {
       ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur safe-area-pb"
-      style={{ background: "hsl(0 0% 7% / 0.97)", borderColor: "hsl(0 0% 18%)" }}>
+    <nav className="glass-nav fixed bottom-0 left-0 right-0 z-50 safe-area-pb">
       <div className={cn("mx-auto grid h-16 max-w-lg items-center", isAreaManager ? "grid-cols-6" : "grid-cols-5")}>
         {tabs.map(({ to, icon: Icon, label, mobileLabel }) => (
           <NavLink
@@ -54,7 +53,7 @@ const StaffBottomNav = () => {
               cn(
                 "flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 font-medium leading-none transition-colors",
                 isAreaManager ? "text-[10px]" : "text-xs",
-                isActive ? "text-gold" : "text-muted-foreground"
+                isActive ? "text-primary" : "text-muted-foreground"
               )
             }
           >

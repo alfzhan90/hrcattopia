@@ -364,7 +364,7 @@ const StaffHome = () => {
           <div className="grid grid-cols-2 gap-3">
             <Button
               size="lg"
-              className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
+              className="btn-tech-green h-14 text-base rounded-xl shadow-md"
               disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
               onClick={() => checkInMutation.mutate()}
             >
