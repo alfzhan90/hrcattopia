@@ -298,10 +298,10 @@ const Schedules = () => {
               key={key}
               className={
                 isUrgent
-                  ? "border-2 border-destructive bg-destructive/5"
+                  ? "urgent-glow glass-surface"
                   : isToday
-                  ? "border-primary"
-                  : ""
+                  ? "border-primary glass-surface"
+                  : "glass-surface"
               }
             >
               <CardHeader className="pb-2">
