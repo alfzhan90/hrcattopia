@@ -12,6 +12,7 @@ import { useState } from "react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ThemeToggle from "@/components/ThemeToggle";
 
 const adminNavItems = [
   { to: "/admin/company", icon: Settings, label: "Company Settings" },
@@ -79,6 +80,7 @@ const AdminLayout = () => {
             </span>
           </div>
           <div className="flex items-center gap-1">
+            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground" />
             <Button
               variant="ghost"
               size="icon"
@@ -185,7 +187,11 @@ const AdminLayout = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border space-y-1">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-sidebar-foreground/50">Theme</span>
+            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" />
+          </div>
           <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={signOut}>
             <LogOut className="h-4 w-4" />
             Sign Out

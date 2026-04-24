@@ -13,6 +13,7 @@ import { haversineDistance, generateDeviceFingerprint, isSameDevice, clearDevice
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
+import ThemeToggle from "@/components/ThemeToggle";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -289,9 +290,12 @@ const StaffHome = () => {
             {isFreelancer && <Badge variant="secondary" className="text-[10px]">Freelancer</Badge>}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Missed Clock-Out Warning */}
