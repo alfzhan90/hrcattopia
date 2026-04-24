@@ -373,7 +373,8 @@ const StaffHome = () => {
             </Button>
             <Button
               size="lg"
-              className="h-14 text-base bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md"
+              variant="destructive"
+              className="h-14 text-base rounded-xl shadow-md"
               disabled={!activeLog || checkOutMutation.isPending}
               onClick={() => checkOutMutation.mutate()}
             >
