@@ -60,6 +60,10 @@ export default {
           light: "hsl(var(--carbon-light))",
         },
         platinum: "hsl(var(--platinum))",
+        "tech-green": {
+          DEFAULT: "hsl(var(--tech-green))",
+          foreground: "hsl(var(--tech-green-foreground))",
+        },
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
