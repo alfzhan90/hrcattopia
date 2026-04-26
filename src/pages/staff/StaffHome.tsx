@@ -189,32 +189,59 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
-      if (!profile || !checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned.");
+      if (!user) throw new Error("Not signed in. Please log in again.");
+      if (!profile) throw new Error("Your profile is still loading. Please wait a moment and retry.");
 
-      // Device binding check — skip if not required
+      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
+      if (!checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned. Contact Admin.");
+
+      // ---- Device binding (with graceful fallback) ----
+      let deviceFlagMissing = false;
       if (profile.is_device_binding_required) {
-        const fingerprint = generateDeviceFingerprint();
-        const currentDeviceId = resolvedDeviceId ?? profile.device_id;
-        if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
-          clearDeviceToken();
-          setDeviceError("This account is locked to another device. Contact Admin.");
-          throw new Error("Device mismatch");
-        }
-        if (!currentDeviceId) {
-          await supabase.from("staff_profiles").update({ device_id: fingerprint }).eq("id", profile.id).eq("user_id", user!.id);
-          setResolvedDeviceId(fingerprint);
+        try {
+          const fingerprint = generateDeviceFingerprint();
+          const currentDeviceId = resolvedDeviceId ?? profile.device_id;
+          if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
+            clearDeviceToken();
+            setDeviceError("This account is locked to another device. Contact Admin.");
+            throw new Error("Device mismatch");
+          }
+          if (!currentDeviceId) {
+            // Best-effort bind — don't block check-in if it fails
+            const { error: bindErr } = await supabase
+              .from("staff_profiles")
+              .update({ device_id: fingerprint })
+              .eq("id", profile.id)
+              .eq("user_id", user.id);
+            if (bindErr) {
+              deviceFlagMissing = true;
+            } else {
+              setResolvedDeviceId(fingerprint);
+            }
+          }
+        } catch (e: any) {
+          if (e?.message === "Device mismatch") throw e;
+          // Fingerprint generation failed — flag and continue
+          deviceFlagMissing = true;
         }
       }
 
-      const pos = await getCurrentPosition();
+      // ---- GPS (hard timeout already applied in getCurrentPosition) ----
+      let pos: GeolocationPosition;
+      try {
+        pos = await getCurrentPosition(8000);
+      } catch (gpsErr: any) {
+        setGeoError(gpsErr?.message ?? "GPS Timeout");
+        throw new Error(gpsErr?.message ?? "GPS Timeout");
+      }
+
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
       if (dist > checkBranch.radius_meters) {
         setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
         throw new Error("Out of range");
       }
 
-      // No late penalty for freelancers, but flag unusual hours
+      // ---- Late calc ----
       let lateMinutes = 0;
       if (!isFreelancer) {
         const now = new Date();
@@ -226,16 +253,35 @@ const StaffHome = () => {
         }
       }
 
+      // ---- Insert (concurrency-safe: each row is independent) ----
       const { error } = await supabase.from("attendance_logs").insert({
-        user_id: user!.id, branch_id: checkBranch.id,
-        check_in_lat: pos.coords.latitude, check_in_long: pos.coords.longitude,
-        status: (lateMinutes > 0 ? "late" : "on_time") as any, late_minutes: lateMinutes,
+        user_id: user.id,
+        branch_id: checkBranch.id,
+        check_in_lat: pos.coords.latitude,
+        check_in_long: pos.coords.longitude,
+        status: (lateMinutes > 0 ? "late" : "on_time") as any,
+        late_minutes: lateMinutes,
+        manager_notes: deviceFlagMissing ? "ID Missing — device binding could not be confirmed" : null,
       });
-      if (error) throw error;
+      if (error) {
+        // Surface common DB errors clearly
+        const msg = error.message.toLowerCase();
+        if (msg.includes("duplicate") || msg.includes("unique"))
+          throw new Error("You are already clocked in. Refresh the page.");
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        throw new Error(error.message || "Database error during check-in.");
+      }
+      return { deviceFlagMissing };
     },
-    onSuccess: () => {
+    onSuccess: ({ deviceFlagMissing }) => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
-      toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      toast({
+        title: "Checked In!",
+        description: deviceFlagMissing
+          ? "Recorded with 'ID Missing' flag. Admin will verify."
+          : "Your attendance has been recorded.",
+      });
     },
     onError: (err: Error) => {
       if (err.message !== "Device mismatch" && err.message !== "Out of range")
@@ -261,7 +307,12 @@ const StaffHome = () => {
         regular_hours: Math.round(regularHours * 100) / 100,
         ot_hours: Math.round(otHours * 100) / 100,
       }).eq("id", activeLog.id);
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        throw new Error(error.message);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
@@ -271,8 +322,29 @@ const StaffHome = () => {
     onError: (err: Error) => toast({ title: "Check-out failed", description: err.message, variant: "destructive" }),
   });
 
-  if (isLoading || !profile) {
-    return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>;
+  // Show the page shell while profile loads — never block the UI behind a full-screen spinner.
+  // Background queries (payslip, OT) load progressively.
+  if (isLoading && !profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">Loading your profile…</p>
+        </div>
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
+        <Alert variant="destructive">
+          <AlertDescription>
+            We couldn't load your staff profile. Please check your connection and refresh, or contact Admin.
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
   }
 
   const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
