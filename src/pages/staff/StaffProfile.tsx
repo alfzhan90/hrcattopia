@@ -127,6 +127,43 @@ const StaffProfile = () => {
         </CardContent>
       </Card>
 
+      {/* Connection Diagnostics */}
+      <Card className="rounded-xl">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <Wifi className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Connection Diagnostics</p>
+              <p className="text-xs text-muted-foreground">
+                Check that your phone can reach the server and your account permissions are valid.
+              </p>
+            </div>
+          </div>
+          {conn.status !== "idle" && (
+            <div className="flex items-start gap-2 text-xs rounded-lg bg-muted/50 p-2">
+              {conn.status === "checking" && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+              {conn.status === "ok" && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+              {conn.status === "fail" && <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+              <span className={conn.status === "fail" ? "text-destructive" : "text-muted-foreground"}>
+                {conn.detail ?? (conn.status === "checking" ? "Running checks…" : "")}
+              </span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            className="w-full h-10 rounded-lg"
+            disabled={conn.status === "checking"}
+            onClick={runConnectionCheck}
+          >
+            {conn.status === "checking" ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Checking…</>
+            ) : (
+              <><Wifi className="h-4 w-4 mr-2" /> Check Connection</>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
       <Button variant="outline" className="w-full h-12 rounded-xl" onClick={signOut}>
         <LogOut className="h-4 w-4 mr-2" /> Sign Out
       </Button>
