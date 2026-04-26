@@ -11,6 +11,35 @@ import { useToast } from "@/hooks/use-toast";
 
 const StaffProfile = () => {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const [conn, setConn] = useState<{ status: "idle" | "checking" | "ok" | "fail"; detail?: string }>({ status: "idle" });
+
+  const runConnectionCheck = async () => {
+    setConn({ status: "checking" });
+    try {
+      const t0 = performance.now();
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr || !sessionData.session) {
+        setConn({ status: "fail", detail: "No active session — please sign in again." });
+        return;
+      }
+      const { error: profileErr } = await supabase
+        .from("staff_profiles")
+        .select("id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (profileErr) {
+        setConn({ status: "fail", detail: `Database error: ${profileErr.message}` });
+        return;
+      }
+      const ms = Math.round(performance.now() - t0);
+      setConn({ status: "ok", detail: `Connected in ${ms}ms — permissions OK.` });
+      toast({ title: "Connection OK", description: `Reached server in ${ms}ms.` });
+    } catch (e: any) {
+      setConn({ status: "fail", detail: e?.message ?? "Unknown network error." });
+      toast({ title: "Connection failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    }
+  };
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
