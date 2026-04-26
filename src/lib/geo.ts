@@ -123,17 +123,47 @@ export function clearDeviceToken(): void {
 
 /**
  * Get current position as a promise.
+ *
+ * Wraps the browser API with a hard outer timeout so the UI never hangs
+ * indefinitely when the device's GPS chip is slow to respond. The inner
+ * `timeout` option only governs the request itself — some devices ignore
+ * it under low-power / background conditions.
  */
-export function getCurrentPosition(): Promise<GeolocationPosition> {
+export function getCurrentPosition(timeoutMs = 8000): Promise<GeolocationPosition> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error("Geolocation is not supported by this browser."));
       return;
     }
-    navigator.geolocation.getCurrentPosition(resolve, reject, {
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0,
-    });
+    let settled = false;
+    const hardTimer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("GPS Timeout — please ensure location services are enabled and try again."));
+    }, timeoutMs + 500);
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(hardTimer);
+        resolve(pos);
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(hardTimer);
+        const msg =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission denied. Enable GPS for this site in your browser settings."
+            : err.code === err.POSITION_UNAVAILABLE
+            ? "Location unavailable. Move to an area with better signal and retry."
+            : err.code === err.TIMEOUT
+            ? "GPS Timeout — please try again with a clear view of the sky."
+            : err.message || "Unable to read your location.";
+        reject(new Error(msg));
+      },
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 0 }
+    );
   });
 }
