@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LogOut, Smartphone, Building2, User, CreditCard } from "lucide-react";
+import { LogOut, Smartphone, Building2, User, CreditCard, Wifi, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { generateDeviceFingerprint, isSameDevice } from "@/lib/geo";
+import { useToast } from "@/hooks/use-toast";
 
 const StaffProfile = () => {
   const { user, signOut } = useAuth();
