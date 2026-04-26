@@ -142,7 +142,7 @@ const StaffProfile = () => {
           {conn.status !== "idle" && (
             <div className="flex items-start gap-2 text-xs rounded-lg bg-muted/50 p-2">
               {conn.status === "checking" && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
-              {conn.status === "ok" && <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />}
+              {conn.status === "ok" && <CheckCircle2 className="h-4 w-4 text-tech-green shrink-0" />}
               {conn.status === "fail" && <XCircle className="h-4 w-4 text-destructive shrink-0" />}
               <span className={conn.status === "fail" ? "text-destructive" : "text-muted-foreground"}>
                 {conn.detail ?? (conn.status === "checking" ? "Running checks…" : "")}
