@@ -14,6 +14,7 @@ import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
 import ThemeToggle from "@/components/ThemeToggle";
+import { REMARK, appendRemark } from "@/lib/attendance-remarks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
