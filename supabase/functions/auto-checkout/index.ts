@@ -22,6 +22,10 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Optional override for ad-hoc/manual runs (not used by cron).
+    const url = new URL(req.url);
+    const force = url.searchParams.get("force") === "true";
+
     // Compute "today" in Asia/Kuala_Lumpur (UTC+8). Cron fires at 20:30 MYT
     // which is 12:30 UTC, so "today" in MYT corresponds to current UTC date.
     const now = new Date();
@@ -29,8 +33,29 @@ Deno.serve(async (req) => {
     const yyyy = myt.getUTCFullYear();
     const mm = String(myt.getUTCMonth() + 1).padStart(2, "0");
     const dd = String(myt.getUTCDate()).padStart(2, "0");
+    const hh = myt.getUTCHours();
+    const mn = myt.getUTCMinutes();
     const todayStart = `${yyyy}-${mm}-${dd}T00:00:00+08:00`;
     const todayEnd = `${yyyy}-${mm}-${dd}T23:59:59+08:00`;
+
+    // GUARD: Never auto-checkout today's records before 20:30 MYT.
+    // Today's open sessions are still "Active" until the cutoff arrives.
+    const beforeCutoff = hh < 20 || (hh === 20 && mn < 30);
+    if (beforeCutoff && !force) {
+      return new Response(
+        JSON.stringify({
+          ok: true,
+          skipped: true,
+          reason: `Current MYT time ${String(hh).padStart(2, "0")}:${String(mn).padStart(2, "0")} is before 20:30 cutoff. No action taken.`,
+          scanned: 0,
+          updated: 0,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        },
+      );
+    }
 
     // Force checkout time to 20:30 MYT today
     const checkoutAt = new Date(`${yyyy}-${mm}-${dd}T20:30:00+08:00`);
