@@ -500,7 +500,9 @@ const StaffHome = () => {
               size="lg"
               variant="destructive"
               className="h-14 text-base rounded-xl shadow-md"
-              disabled={!activeLog || checkOutMutation.isPending}
+              // Always allow tapping unless mutation is in-flight. The mutation
+              // re-fetches the open log live, so a stale cache cannot block checkout.
+              disabled={checkOutMutation.isPending}
               onClick={() => checkOutMutation.mutate()}
             >
               <LogOut className="h-5 w-5 mr-2" />
