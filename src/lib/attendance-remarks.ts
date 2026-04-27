@@ -6,6 +6,9 @@ export const REMARK = {
   AUTO_CHECKOUT: "🤖 System Auto-Checkout",
   FULL_TIME_ISSUE: "🚩 Forgot again/Attendance Issue",
   ID_MISSING: "ID Missing — device binding could not be confirmed",
+  HISTORICAL_MISSING: "🚩 Historical: Missing/Invalid Logout",
+  HISTORICAL_DOUBLE: "⚠️ Historical: Double Entry",
+  FREQUENT_ISSUE: "🚩 Frequent Attendance Issue - Forgot again",
 } as const;
 
 export type RemarkKind =
@@ -13,6 +16,9 @@ export type RemarkKind =
   | "auto_checkout"
   | "full_time_issue"
   | "id_missing"
+  | "historical_missing"
+  | "historical_double"
+  | "frequent_issue"
   | "manual";
 
 export function appendRemark(existing: string | null | undefined, tag: string): string {
