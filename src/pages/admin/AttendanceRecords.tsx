@@ -349,7 +349,7 @@ const AttendanceRecords = () => {
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Issues / Flags</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
