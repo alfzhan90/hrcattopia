@@ -252,6 +252,21 @@ const AttendanceRecords = () => {
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[160px]" />
         </div>
         <div className="space-y-1">
+          <Label className="text-xs">Flags</Label>
+          <Select value={flagFilter} onValueChange={(v: any) => setFlagFilter(v)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Records</SelectItem>
+              <SelectItem value="any">Any Flag</SelectItem>
+              <SelectItem value="double_entry">Errors (Double Entry)</SelectItem>
+              <SelectItem value="auto_checkout">Auto-Logs</SelectItem>
+              <SelectItem value="full_time_issue">Full-Time Issues</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Search</Label>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -279,17 +294,18 @@ const AttendanceRecords = () => {
               <TableHead>Net Hrs</TableHead>
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Issues / Flags</TableHead>
               <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
               </TableRow>
             ) : (
               filteredLogs.map((log) => {
@@ -316,6 +332,7 @@ const AttendanceRecords = () => {
                         <Badge variant="secondary" className="text-xs">On Time</Badge>
                       )}
                     </TableCell>
+                    <TableCell>{flagBadges(log.manager_notes)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(log)}>
                         <Pencil className="h-4 w-4" />
