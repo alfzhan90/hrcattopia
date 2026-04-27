@@ -82,12 +82,55 @@ const AttendanceRecords = () => {
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b]));
 
   const filteredLogs = logs.filter((log) => {
-    if (!searchTerm) return true;
-    const s = staffMap[log.user_id];
-    if (!s) return false;
-    const term = searchTerm.toLowerCase();
-    return s.name.toLowerCase().includes(term) || s.staff_id.toLowerCase().includes(term);
+    if (searchTerm) {
+      const s = staffMap[log.user_id];
+      if (!s) return false;
+      const term = searchTerm.toLowerCase();
+      if (!s.name.toLowerCase().includes(term) && !s.staff_id.toLowerCase().includes(term)) return false;
+    }
+    if (flagFilter !== "all") {
+      const kinds = classifyRemark(log.manager_notes);
+      const hasFlag = kinds.length > 0 && !(kinds.length === 1 && kinds[0] === "manual");
+      if (flagFilter === "any") {
+        if (!hasFlag) return false;
+      } else if (!kinds.includes(flagFilter as RemarkKind)) {
+        return false;
+      }
+    }
+    return true;
   });
+
+  const flagBadges = (notes: string | null) => {
+    const kinds = classifyRemark(notes);
+    if (kinds.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+    return (
+      <div className="flex flex-wrap gap-1 max-w-[260px]">
+        {kinds.map((k) => {
+          if (k === "double_entry")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <AlertTriangle className="h-3 w-3" /> Double Entry
+              </Badge>
+            );
+          if (k === "auto_checkout")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                <Bot className="h-3 w-3" /> Auto-Checkout
+              </Badge>
+            );
+          if (k === "full_time_issue")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30">
+                <Flag className="h-3 w-3" /> FT Issue
+              </Badge>
+            );
+          if (k === "id_missing")
+            return <Badge key={k} variant="outline" className="text-[10px]">ID Missing</Badge>;
+          return <Badge key={k} variant="outline" className="text-[10px]">Note</Badge>;
+        })}
+      </div>
+    );
+  };
 
   const openEdit = (log: AttendanceLog) => {
     setEditLog(log);
