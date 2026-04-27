@@ -32,15 +32,22 @@ type Branch = Tables<"branches">;
 const AttendanceRecords = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [flagFilter, setFlagFilter] = useState<"all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue">("all");
+  const [flagFilter, setFlagFilter] = useState<
+    "all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue" | "historical_missing" | "historical_double" | "frequent_issue"
+  >("all");
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editLog, setEditLog] = useState<any>(null);
+
+  // Delete confirmation state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
 
