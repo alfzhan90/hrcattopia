@@ -296,6 +296,9 @@ const AttendanceRecords = () => {
               <SelectItem value="double_entry">Errors (Double Entry)</SelectItem>
               <SelectItem value="auto_checkout">Auto-Logs</SelectItem>
               <SelectItem value="full_time_issue">Full-Time Issues</SelectItem>
+              <SelectItem value="historical_missing">Historical: Missing Logout</SelectItem>
+              <SelectItem value="historical_double">Historical: Double Entry</SelectItem>
+              <SelectItem value="frequent_issue">Frequent Issue</SelectItem>
             </SelectContent>
           </Select>
         </div>
