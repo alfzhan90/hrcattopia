@@ -451,7 +451,7 @@ const Attendance = () => {
           size="lg"
           variant="outline"
           className="h-20 text-lg"
-          disabled={!activeLog || checkOutMutation.isPending}
+          disabled={checkOutMutation.isPending}
           onClick={() => checkOutMutation.mutate()}
         >
           <LogOut className="h-6 w-6 mr-2" />
