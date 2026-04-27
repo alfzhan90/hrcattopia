@@ -517,13 +517,27 @@ const Staff = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredStaff.map((s) => (
-                <TableRow key={s.id}>
+              filteredStaff.map((s) => {
+                const incidentCount = incidentMap[s.user_id] ?? 0;
+                const isHabitual = incidentCount > 3;
+                return (
+                <TableRow
+                  key={s.id}
+                  className={isHabitual ? "bg-warning/10 hover:bg-warning/15" : undefined}
+                >
                   <TableCell className="font-mono text-sm">{s.staff_id}</TableCell>
                   <TableCell className="font-medium">
                     <span>{s.name}</span>
                     {s.employment_status === "resigned" || s.employment_status === "terminated" ? (
                       <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
+                    ) : null}
+                    {isHabitual ? (
+                      <Badge
+                        variant="secondary"
+                        className="ml-2 text-[10px] gap-1 bg-warning/20 text-warning border-warning/40"
+                      >
+                        <AlertOctagon className="h-3 w-3" /> Frequent Errors ({incidentCount})
+                      </Badge>
                     ) : null}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
