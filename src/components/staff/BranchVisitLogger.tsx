@@ -33,7 +33,12 @@ const BranchVisitLogger = ({ profileId }: Props) => {
     },
   });
 
-  const today = new Date().toISOString().split("T")[0];
+  // MYT (UTC+8) day boundary — avoids UTC date-rollover bugs in evenings.
+  const todayMyt = (() => {
+    const m = new Date(Date.now() + 8 * 60 * 60 * 1000);
+    return `${m.getUTCFullYear()}-${String(m.getUTCMonth() + 1).padStart(2, "0")}-${String(m.getUTCDate()).padStart(2, "0")}`;
+  })();
+  const today = todayMyt;
 
   const { data: todayVisits = [] } = useQuery({
     queryKey: ["today-visits", profileId, today],
