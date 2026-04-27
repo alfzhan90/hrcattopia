@@ -83,17 +83,24 @@ const StaffHome = () => {
     ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
     : branch ?? null;
 
+  // Find the most recent OPEN attendance log (no check_out_time) for this user.
+  // We deliberately do NOT filter by today's date — using `new Date().toISOString()`
+  // returns a UTC date which causes off-by-one bugs for staff in MYT (UTC+8) who
+  // check in before 08:00 MYT but reload the page after the UTC date rolls over.
+  // Looking up by `is null` + ordering returns the open log regardless of timezone.
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("attendance_logs").select("*").eq("user_id", user!.id)
-        .gte("check_in_time", today).is("check_out_time", null).maybeSingle();
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const { data: monthOt = 0 } = useQuery({
