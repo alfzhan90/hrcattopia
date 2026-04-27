@@ -127,22 +127,28 @@ const StaffHome = () => {
     enabled: !!profile,
   });
 
-  // Check for missed clock-out from previous days
+  // Check for missed clock-out from previous days.
+  // We use MYT (Asia/Kuala_Lumpur) as the day boundary so that an evening reload
+  // around midnight UTC does not mis-flag today's open log as "missed".
   const { data: missedClockOut } = useQuery({
     queryKey: ["missed-clockout", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      // Compute today's MYT date (UTC+8) — robust against UTC date rollover.
+      const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const todayMyt = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("attendance_logs").select("id, check_in_time")
         .eq("user_id", user!.id)
-        .lt("check_in_time", today)
+        .lt("check_in_time", todayMyt)
         .is("check_out_time", null)
-        .limit(1)
-        .maybeSingle();
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    // Never let this background query throw and block the UI.
+    retry: 1,
   });
 
   // Smart notifications
