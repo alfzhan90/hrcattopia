@@ -210,7 +210,7 @@ const AttendanceRecords = () => {
     },
   });
 
-
+  const addMutation = useMutation({
     mutationFn: async () => {
       const staffProfile = staff.find((s) => s.id === addStaffId);
       if (!staffProfile) throw new Error("Select a staff member");
