@@ -114,13 +114,13 @@ const AttendanceRecords = () => {
             );
           if (k === "auto_checkout")
             return (
-              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30">
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-info/15 text-info border-info/30">
                 <Bot className="h-3 w-3" /> Auto-Checkout
               </Badge>
             );
           if (k === "full_time_issue")
             return (
-              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30">
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
                 <Flag className="h-3 w-3" /> FT Issue
               </Badge>
             );
