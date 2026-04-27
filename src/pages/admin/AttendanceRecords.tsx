@@ -7,11 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search, AlertTriangle, Bot, Flag } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -21,15 +32,22 @@ type Branch = Tables<"branches">;
 const AttendanceRecords = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [flagFilter, setFlagFilter] = useState<"all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue">("all");
+  const [flagFilter, setFlagFilter] = useState<
+    "all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue" | "historical_missing" | "historical_double" | "frequent_issue"
+  >("all");
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editLog, setEditLog] = useState<any>(null);
+
+  // Delete confirmation state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
 
@@ -124,6 +142,24 @@ const AttendanceRecords = () => {
                 <Flag className="h-3 w-3" /> FT Issue
               </Badge>
             );
+          if (k === "historical_missing")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Missing Logout
+              </Badge>
+            );
+          if (k === "historical_double")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Double Entry
+              </Badge>
+            );
+          if (k === "frequent_issue")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <Flag className="h-3 w-3" /> Frequent Issue
+              </Badge>
+            );
           if (k === "id_missing")
             return <Badge key={k} variant="outline" className="text-[10px]">ID Missing</Badge>;
           return <Badge key={k} variant="outline" className="text-[10px]">Note</Badge>;
@@ -174,6 +210,21 @@ const AttendanceRecords = () => {
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("attendance_logs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
+      setDeleteId(null);
+      toast({ title: "Deleted", description: "Attendance record permanently removed." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -263,6 +314,9 @@ const AttendanceRecords = () => {
               <SelectItem value="double_entry">Errors (Double Entry)</SelectItem>
               <SelectItem value="auto_checkout">Auto-Logs</SelectItem>
               <SelectItem value="full_time_issue">Full-Time Issues</SelectItem>
+              <SelectItem value="historical_missing">Historical: Missing Logout</SelectItem>
+              <SelectItem value="historical_double">Historical: Double Entry</SelectItem>
+              <SelectItem value="frequent_issue">Frequent Issue</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -295,7 +349,7 @@ const AttendanceRecords = () => {
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Issues / Flags</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
+              <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -333,10 +387,23 @@ const AttendanceRecords = () => {
                       )}
                     </TableCell>
                     <TableCell>{flagBadges(log.manager_notes)}</TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(log)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(log)} aria-label="Edit log">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteId(log.id)}
+                            aria-label="Delete log"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -419,6 +486,31 @@ const AttendanceRecords = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete attendance record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this attendance record? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteId) deleteMutation.mutate(deleteId);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
