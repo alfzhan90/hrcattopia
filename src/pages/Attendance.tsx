@@ -262,40 +262,50 @@ const Attendance = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      if (!activeLog) throw new Error("No active check-in found.");
+      if (!user) throw new Error("Not signed in. Please log in again.");
 
-      const checkIn = new Date(activeLog.check_in_time);
+      // Fetch the latest open log live — never trust stale React Query cache for checkout.
+      const { data: openLogs, error: fetchErr } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
+      if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
+      const openLog = openLogs?.[0];
+      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+
+      const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-      
+
       // Malaysian Employment Act: 1 hour rest if >= 5 hours worked
       const restHours = calcRestHours(totalHours);
       const netHours = calcNetHours(totalHours);
       const regularHours = Math.min(netHours, 8);
       const otHours = calcDailyOt(netHours);
 
-      const updatedRecord = {
-        ...activeLog,
-        check_out_time: now.toISOString(),
-        rest_hours: Math.round(restHours * 100) / 100,
-        net_hours: Math.round(netHours * 100) / 100,
-        regular_hours: Math.round(regularHours * 100) / 100,
-        ot_hours: Math.round(otHours * 100) / 100,
-      };
-
       const { data: updatedRow, error } = await supabase
         .from("attendance_logs")
         .update({
-          check_out_time: updatedRecord.check_out_time,
-          rest_hours: updatedRecord.rest_hours,
-          net_hours: updatedRecord.net_hours,
-          regular_hours: updatedRecord.regular_hours,
-          ot_hours: updatedRecord.ot_hours,
+          check_out_time: now.toISOString(),
+          rest_hours: Math.round(restHours * 100) / 100,
+          net_hours: Math.round(netHours * 100) / 100,
+          regular_hours: Math.round(regularHours * 100) / 100,
+          ot_hours: Math.round(otHours * 100) / 100,
         })
-        .eq("id", activeLog.id)
+        .eq("id", openLog.id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        if (msg.includes("permission") || msg.includes("policy") || msg.includes("rls"))
+          throw new Error("Permission denied — please log out and log back in.");
+        throw new Error(error.message);
+      }
 
       // Fire Telegram notification for check-out
       console.log("[notify-attendance] Calling edge function with record:", updatedRow?.id);
