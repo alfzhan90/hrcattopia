@@ -142,6 +142,24 @@ const AttendanceRecords = () => {
                 <Flag className="h-3 w-3" /> FT Issue
               </Badge>
             );
+          if (k === "historical_missing")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Missing Logout
+              </Badge>
+            );
+          if (k === "historical_double")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Double Entry
+              </Badge>
+            );
+          if (k === "frequent_issue")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <Flag className="h-3 w-3" /> Frequent Issue
+              </Badge>
+            );
           if (k === "id_missing")
             return <Badge key={k} variant="outline" className="text-[10px]">ID Missing</Badge>;
           return <Badge key={k} variant="outline" className="text-[10px]">Note</Badge>;
