@@ -325,8 +325,21 @@ const StaffHome = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      if (!activeLog) throw new Error("No active check-in found.");
-      const checkIn = new Date(activeLog.check_in_time);
+      if (!user) throw new Error("Not signed in. Please log in again.");
+
+      // Fetch the latest open log live — never trust stale React Query cache for checkout.
+      const { data: openLogs, error: fetchErr } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
+      if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
+      const openLog = openLogs?.[0];
+      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+
+      const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
       const restHours = Math.floor(totalHours / 5);
@@ -340,11 +353,13 @@ const StaffHome = () => {
         net_hours: Math.round(netHours * 100) / 100,
         regular_hours: Math.round(regularHours * 100) / 100,
         ot_hours: Math.round(otHours * 100) / 100,
-      }).eq("id", activeLog.id);
+      }).eq("id", openLog.id);
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("timeout") || msg.includes("network"))
           throw new Error("Database busy — please try again in a few seconds.");
+        if (msg.includes("permission") || msg.includes("policy") || msg.includes("rls"))
+          throw new Error("Permission denied — please log out and log back in.");
         throw new Error(error.message);
       }
     },
