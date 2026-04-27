@@ -14,6 +14,7 @@ import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
 import ThemeToggle from "@/components/ThemeToggle";
+import { REMARK, appendRemark } from "@/lib/attendance-remarks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -253,7 +254,31 @@ const StaffHome = () => {
         }
       }
 
-      // ---- Insert (concurrency-safe: each row is independent) ----
+      // ---- Double-entry detection ----
+      const todayStartIso = new Date().toISOString().split("T")[0] + "T00:00:00";
+      const sixtySecAgo = new Date(Date.now() - 60_000).toISOString();
+      const { data: existingToday } = await supabase
+        .from("attendance_logs")
+        .select("id, check_in_time, check_out_time")
+        .eq("user_id", user.id)
+        .gte("check_in_time", todayStartIso)
+        .order("check_in_time", { ascending: false })
+        .limit(5);
+
+      const hasOpenLog = (existingToday ?? []).some((l) => !l.check_out_time);
+      const hasRapidClick = (existingToday ?? []).some((l) => l.check_in_time >= sixtySecAgo);
+      const isDoubleEntry = hasOpenLog || hasRapidClick;
+
+      // ---- Build remarks ----
+      let remarks: string | null = null;
+      if (deviceFlagMissing) remarks = appendRemark(remarks, REMARK.ID_MISSING);
+      if (isDoubleEntry) remarks = appendRemark(remarks, REMARK.DOUBLE_ENTRY);
+      const isFullTime = profile.employment_type === "Monthly-FT" || profile.employment_type === "Hourly-FT";
+      if (isFullTime && lateMinutes > 0) {
+        remarks = appendRemark(remarks, `🚩 ${profile.name} - Forgot again/Attendance Issue`);
+      }
+
+      // ---- Insert ----
       const { error } = await supabase.from("attendance_logs").insert({
         user_id: user.id,
         branch_id: checkBranch.id,
@@ -261,10 +286,9 @@ const StaffHome = () => {
         check_in_long: pos.coords.longitude,
         status: (lateMinutes > 0 ? "late" : "on_time") as any,
         late_minutes: lateMinutes,
-        manager_notes: deviceFlagMissing ? "ID Missing — device binding could not be confirmed" : null,
+        manager_notes: remarks,
       });
       if (error) {
-        // Surface common DB errors clearly
         const msg = error.message.toLowerCase();
         if (msg.includes("duplicate") || msg.includes("unique"))
           throw new Error("You are already clocked in. Refresh the page.");
@@ -272,14 +296,17 @@ const StaffHome = () => {
           throw new Error("Database busy — please try again in a few seconds.");
         throw new Error(error.message || "Database error during check-in.");
       }
-      return { deviceFlagMissing };
+      return { deviceFlagMissing, isDoubleEntry };
     },
-    onSuccess: ({ deviceFlagMissing }) => {
+    onSuccess: ({ deviceFlagMissing, isDoubleEntry }) => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
+      const parts: string[] = [];
+      if (deviceFlagMissing) parts.push("flagged 'ID Missing'");
+      if (isDoubleEntry) parts.push("flagged as possible double entry");
       toast({
         title: "Checked In!",
-        description: deviceFlagMissing
-          ? "Recorded with 'ID Missing' flag. Admin will verify."
+        description: parts.length
+          ? `Recorded — ${parts.join(" & ")}. Admin will review.`
           : "Your attendance has been recorded.",
       });
     },

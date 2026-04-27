@@ -21,6 +21,8 @@ import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Cloc
 import { Switch } from "@/components/ui/switch";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
+import { isHabitualIncident } from "@/lib/attendance-remarks";
+import { AlertOctagon } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -80,6 +82,27 @@ const Staff = () => {
       const { data, error } = await supabase.from("branches").select("*").order("name");
       if (error) throw error;
       return data as Branch[];
+    },
+  });
+
+  // Habitual offender tracking: count Auto-Checkout / Double-Entry incidents in last 30 days
+  const { data: incidentMap = {} } = useQuery({
+    queryKey: ["habitual-incidents-30d"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .select("user_id, manager_notes")
+        .gte("check_in_time", since)
+        .not("manager_notes", "is", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (isHabitualIncident(row.manager_notes)) {
+          counts[row.user_id] = (counts[row.user_id] ?? 0) + 1;
+        }
+      }
+      return counts;
     },
   });
 
@@ -494,13 +517,27 @@ const Staff = () => {
                 </TableCell>
               </TableRow>
             ) : (
-              filteredStaff.map((s) => (
-                <TableRow key={s.id}>
+              filteredStaff.map((s) => {
+                const incidentCount = incidentMap[s.user_id] ?? 0;
+                const isHabitual = incidentCount > 3;
+                return (
+                <TableRow
+                  key={s.id}
+                  className={isHabitual ? "bg-warning/10 hover:bg-warning/15" : undefined}
+                >
                   <TableCell className="font-mono text-sm">{s.staff_id}</TableCell>
                   <TableCell className="font-medium">
                     <span>{s.name}</span>
                     {s.employment_status === "resigned" || s.employment_status === "terminated" ? (
                       <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
+                    ) : null}
+                    {isHabitual ? (
+                      <Badge
+                        variant="secondary"
+                        className="ml-2 text-[10px] gap-1 bg-warning/20 text-warning border-warning/40"
+                      >
+                        <AlertOctagon className="h-3 w-3" /> Frequent Errors ({incidentCount})
+                      </Badge>
                     ) : null}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
@@ -561,7 +598,8 @@ const Staff = () => {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

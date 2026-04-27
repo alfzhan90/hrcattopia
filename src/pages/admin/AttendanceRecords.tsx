@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -22,6 +23,7 @@ const AttendanceRecords = () => {
   const queryClient = useQueryClient();
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [flagFilter, setFlagFilter] = useState<"all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue">("all");
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
@@ -80,12 +82,55 @@ const AttendanceRecords = () => {
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b]));
 
   const filteredLogs = logs.filter((log) => {
-    if (!searchTerm) return true;
-    const s = staffMap[log.user_id];
-    if (!s) return false;
-    const term = searchTerm.toLowerCase();
-    return s.name.toLowerCase().includes(term) || s.staff_id.toLowerCase().includes(term);
+    if (searchTerm) {
+      const s = staffMap[log.user_id];
+      if (!s) return false;
+      const term = searchTerm.toLowerCase();
+      if (!s.name.toLowerCase().includes(term) && !s.staff_id.toLowerCase().includes(term)) return false;
+    }
+    if (flagFilter !== "all") {
+      const kinds = classifyRemark(log.manager_notes);
+      const hasFlag = kinds.length > 0 && !(kinds.length === 1 && kinds[0] === "manual");
+      if (flagFilter === "any") {
+        if (!hasFlag) return false;
+      } else if (!kinds.includes(flagFilter as RemarkKind)) {
+        return false;
+      }
+    }
+    return true;
   });
+
+  const flagBadges = (notes: string | null) => {
+    const kinds = classifyRemark(notes);
+    if (kinds.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+    return (
+      <div className="flex flex-wrap gap-1 max-w-[260px]">
+        {kinds.map((k) => {
+          if (k === "double_entry")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <AlertTriangle className="h-3 w-3" /> Double Entry
+              </Badge>
+            );
+          if (k === "auto_checkout")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-info/15 text-info border-info/30">
+                <Bot className="h-3 w-3" /> Auto-Checkout
+              </Badge>
+            );
+          if (k === "full_time_issue")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <Flag className="h-3 w-3" /> FT Issue
+              </Badge>
+            );
+          if (k === "id_missing")
+            return <Badge key={k} variant="outline" className="text-[10px]">ID Missing</Badge>;
+          return <Badge key={k} variant="outline" className="text-[10px]">Note</Badge>;
+        })}
+      </div>
+    );
+  };
 
   const openEdit = (log: AttendanceLog) => {
     setEditLog(log);
@@ -207,6 +252,21 @@ const AttendanceRecords = () => {
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[160px]" />
         </div>
         <div className="space-y-1">
+          <Label className="text-xs">Flags</Label>
+          <Select value={flagFilter} onValueChange={(v: any) => setFlagFilter(v)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Records</SelectItem>
+              <SelectItem value="any">Any Flag</SelectItem>
+              <SelectItem value="double_entry">Errors (Double Entry)</SelectItem>
+              <SelectItem value="auto_checkout">Auto-Logs</SelectItem>
+              <SelectItem value="full_time_issue">Full-Time Issues</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Search</Label>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -234,17 +294,18 @@ const AttendanceRecords = () => {
               <TableHead>Net Hrs</TableHead>
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Issues / Flags</TableHead>
               <TableHead className="w-[60px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
               </TableRow>
             ) : (
               filteredLogs.map((log) => {
@@ -271,6 +332,7 @@ const AttendanceRecords = () => {
                         <Badge variant="secondary" className="text-xs">On Time</Badge>
                       )}
                     </TableCell>
+                    <TableCell>{flagBadges(log.manager_notes)}</TableCell>
                     <TableCell>
                       <Button variant="ghost" size="icon" onClick={() => openEdit(log)}>
                         <Pencil className="h-4 w-4" />
