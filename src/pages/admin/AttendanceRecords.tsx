@@ -195,7 +195,22 @@ const AttendanceRecords = () => {
     },
   });
 
-  const addMutation = useMutation({
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("attendance_logs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
+      setDeleteId(null);
+      toast({ title: "Deleted", description: "Attendance record permanently removed." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
+    },
+  });
+
+
     mutationFn: async () => {
       const staffProfile = staff.find((s) => s.id === addStaffId);
       if (!staffProfile) throw new Error("Select a staff member");
