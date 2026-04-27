@@ -85,6 +85,27 @@ const Staff = () => {
     },
   });
 
+  // Habitual offender tracking: count Auto-Checkout / Double-Entry incidents in last 30 days
+  const { data: incidentMap = {} } = useQuery({
+    queryKey: ["habitual-incidents-30d"],
+    queryFn: async () => {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      const { data, error } = await supabase
+        .from("attendance_logs")
+        .select("user_id, manager_notes")
+        .gte("check_in_time", since)
+        .not("manager_notes", "is", null);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        if (isHabitualIncident(row.manager_notes)) {
+          counts[row.user_id] = (counts[row.user_id] ?? 0) + 1;
+        }
+      }
+      return counts;
+    },
+  });
+
   const createMutation = useMutation({
     mutationFn: async (values: typeof form) => {
       const { data: sessionData } = await supabase.auth.getSession();
