@@ -9,8 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -22,6 +23,7 @@ const AttendanceRecords = () => {
   const queryClient = useQueryClient();
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [flagFilter, setFlagFilter] = useState<"all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue">("all");
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
