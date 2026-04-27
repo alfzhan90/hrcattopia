@@ -57,21 +57,24 @@ const Attendance = () => {
     enabled: !!profile?.branch_id,
   });
 
+  // Find the most recent OPEN attendance log (no check_out_time) for this user.
+  // Avoid filtering by UTC date — staff in MYT (UTC+8) checking in before 08:00 MYT
+  // would have their log skipped after the UTC date rolls over, breaking Clock Out.
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("attendance_logs")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("check_in_time", today)
         .is("check_out_time", null)
-        .maybeSingle();
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
