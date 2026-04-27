@@ -21,6 +21,8 @@ import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Cloc
 import { Switch } from "@/components/ui/switch";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
+import { isHabitualIncident } from "@/lib/attendance-remarks";
+import { AlertOctagon } from "lucide-react";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
