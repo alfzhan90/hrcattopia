@@ -267,14 +267,15 @@ const StaffHome = () => {
         }
       }
 
-      // ---- Double-entry detection ----
-      const todayStartIso = new Date().toISOString().split("T")[0] + "T00:00:00";
+      // ---- Double-entry detection (use MYT day boundary) ----
+      const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const todayMytIso = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}T00:00:00+08:00`;
       const sixtySecAgo = new Date(Date.now() - 60_000).toISOString();
       const { data: existingToday } = await supabase
         .from("attendance_logs")
         .select("id, check_in_time, check_out_time")
         .eq("user_id", user.id)
-        .gte("check_in_time", todayStartIso)
+        .gte("check_in_time", todayMytIso)
         .order("check_in_time", { ascending: false })
         .limit(5);
 
