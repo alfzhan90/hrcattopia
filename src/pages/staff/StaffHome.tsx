@@ -83,17 +83,24 @@ const StaffHome = () => {
     ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
     : branch ?? null;
 
+  // Find the most recent OPEN attendance log (no check_out_time) for this user.
+  // We deliberately do NOT filter by today's date — using `new Date().toISOString()`
+  // returns a UTC date which causes off-by-one bugs for staff in MYT (UTC+8) who
+  // check in before 08:00 MYT but reload the page after the UTC date rolls over.
+  // Looking up by `is null` + ordering returns the open log regardless of timezone.
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("attendance_logs").select("*").eq("user_id", user!.id)
-        .gte("check_in_time", today).is("check_out_time", null).maybeSingle();
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const { data: monthOt = 0 } = useQuery({
@@ -318,8 +325,21 @@ const StaffHome = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      if (!activeLog) throw new Error("No active check-in found.");
-      const checkIn = new Date(activeLog.check_in_time);
+      if (!user) throw new Error("Not signed in. Please log in again.");
+
+      // Fetch the latest open log live — never trust stale React Query cache for checkout.
+      const { data: openLogs, error: fetchErr } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
+      if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
+      const openLog = openLogs?.[0];
+      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+
+      const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
       const restHours = Math.floor(totalHours / 5);
@@ -333,11 +353,13 @@ const StaffHome = () => {
         net_hours: Math.round(netHours * 100) / 100,
         regular_hours: Math.round(regularHours * 100) / 100,
         ot_hours: Math.round(otHours * 100) / 100,
-      }).eq("id", activeLog.id);
+      }).eq("id", openLog.id);
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("timeout") || msg.includes("network"))
           throw new Error("Database busy — please try again in a few seconds.");
+        if (msg.includes("permission") || msg.includes("policy") || msg.includes("rls"))
+          throw new Error("Permission denied — please log out and log back in.");
         throw new Error(error.message);
       }
     },
@@ -478,7 +500,9 @@ const StaffHome = () => {
               size="lg"
               variant="destructive"
               className="h-14 text-base rounded-xl shadow-md"
-              disabled={!activeLog || checkOutMutation.isPending}
+              // Always allow tapping unless mutation is in-flight. The mutation
+              // re-fetches the open log live, so a stale cache cannot block checkout.
+              disabled={checkOutMutation.isPending}
               onClick={() => checkOutMutation.mutate()}
             >
               <LogOut className="h-5 w-5 mr-2" />
