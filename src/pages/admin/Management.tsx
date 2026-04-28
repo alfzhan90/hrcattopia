@@ -17,7 +17,16 @@ const mapContainerStyle = { width: "100%", height: "100%" };
 const defaultCenter = { lat: 3.139, lng: 101.6869 };
 
 const Management = () => {
-  const today = new Date().toISOString().split("T")[0];
+  // MYT (UTC+8) "today" — compute the MYT calendar date and the UTC instant
+  // corresponding to MYT 00:00. Using a bare date string with .gte() compares
+  // against UTC midnight, which incorrectly excludes records check-in early
+  // morning MYT (UTC previous day evening).
+  const mytNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const today = `${mytNow.getUTCFullYear()}-${String(mytNow.getUTCMonth() + 1).padStart(2, "0")}-${String(mytNow.getUTCDate()).padStart(2, "0")}`;
+  // MYT midnight today, expressed as a real UTC ISO timestamp
+  const mytMidnightUtcIso = new Date(Date.UTC(
+    mytNow.getUTCFullYear(), mytNow.getUTCMonth(), mytNow.getUTCDate(), -8, 0, 0
+  )).toISOString();
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -30,7 +39,7 @@ const Management = () => {
       const { data, error } = await supabase
         .from("attendance_logs")
         .select("*")
-        .gte("check_in_time", today)
+        .gte("check_in_time", mytMidnightUtcIso)
         .order("check_in_time", { ascending: false });
       if (error) throw error;
       return data as AttendanceLog[];
@@ -80,7 +89,7 @@ const Management = () => {
       const { data, error } = await supabase
         .from("branch_visits")
         .select("*, staff_profiles(user_id, name, staff_id), branches(name)")
-        .gte("visited_at", today)
+        .gte("visited_at", mytMidnightUtcIso)
         .order("visited_at", { ascending: false });
       if (error) throw error;
       return data;

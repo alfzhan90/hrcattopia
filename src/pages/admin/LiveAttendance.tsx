@@ -10,17 +10,24 @@ import type { Tables } from "@/integrations/supabase/types";
 type AttendanceLog = Tables<"attendance_logs">;
 
 const LiveAttendance = () => {
-  const today = new Date().toISOString().split("T")[0];
+  // MYT (UTC+8) midnight as a UTC ISO timestamp. A bare date string compared
+  // with .gte() is interpreted as UTC midnight, which wrongly excludes staff
+  // who clocked in early morning MYT (UTC = previous day evening).
+  const mytNow = new Date(Date.now() + 8 * 60 * 60 * 1000);
+  const mytMidnightUtcIso = new Date(Date.UTC(
+    mytNow.getUTCFullYear(), mytNow.getUTCMonth(), mytNow.getUTCDate(), -8, 0, 0
+  )).toISOString();
 
-  // Fetch today's active check-ins (no check-out yet)
+  // Fetch active check-ins (no check-out yet) — include any open session,
+  // not just today's, so early-morning shifts are never hidden.
   const { data: activeLogs = [], isLoading } = useQuery({
     queryKey: ["live-attendance"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("attendance_logs")
         .select("*")
-        .gte("check_in_time", today)
         .is("check_out_time", null)
+        .gte("check_in_time", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString())
         .order("check_in_time", { ascending: false });
       if (error) throw error;
       return data as AttendanceLog[];
