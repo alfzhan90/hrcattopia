@@ -49,6 +49,20 @@ const StaffLeave = () => {
     enabled: !!profile,
   });
 
+  // Realtime updates so staff sees Approved/Rejected instantly
+  useEffect(() => {
+    if (!profile?.id) return;
+    const ch = supabase
+      .channel(`leave-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leave_records", filter: `staff_profile_id=eq.${profile.id}` },
+        () => qc.invalidateQueries({ queryKey: ["my-leave-requests", profile.id] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id, qc]);
+
   const { data: holidays = [] } = useQuery({
     queryKey: ["public-holidays"],
     queryFn: async () => {
