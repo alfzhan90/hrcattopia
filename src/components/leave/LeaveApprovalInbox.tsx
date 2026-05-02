@@ -163,9 +163,11 @@ const LeaveApprovalInbox = () => {
                     <TableCell className="text-sm max-w-[150px] truncate">{lr.reason || "—"}</TableCell>
                     <TableCell>
                       {lr.mc_file_url ? (
-                        <a href={lr.mc_file_url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </a>
+                        <Button asChild size="sm" variant="outline" className="h-8">
+                          <a href={lr.mc_file_url} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-3.5 w-3.5 mr-1" /> View Document
+                          </a>
+                        </Button>
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-xs">
