@@ -74,6 +74,24 @@ const StaffLeave = () => {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Profile not found");
+      if (!form.start_date) throw new Error("Pick a start date");
+
+      // 3-day notice for AL
+      if (form.leave_type === "AL") {
+        const start = new Date(form.start_date + "T00:00:00");
+        const minStart = new Date();
+        minStart.setHours(0, 0, 0, 0);
+        minStart.setDate(minStart.getDate() + 3);
+        if (start < minStart) {
+          throw new Error("⚠️ AL must be applied 3 days in advance. Use EL for emergencies.");
+        }
+      }
+
+      // MC requires a file
+      if (form.leave_type === "MC" && !mcFile) {
+        throw new Error("Please upload your MC document.");
+      }
+
       let mcFileUrl: string | null = null;
       if (mcFile && form.leave_type === "MC") {
         const ext = mcFile.name.split(".").pop();
@@ -94,6 +112,17 @@ const StaffLeave = () => {
       }
       const { error } = await supabase.from("leave_records").insert(records);
       if (error) throw error;
+
+      // Notify admin via Telegram (fire-and-forget)
+      supabase.functions.invoke("notify-leave-request", {
+        body: {
+          staff_name: profile.name,
+          leave_type: form.leave_type,
+          start_date: form.start_date,
+          end_date: form.end_date || form.start_date,
+          reason: form.reason || null,
+        },
+      }).catch((e) => console.warn("notify-leave-request failed", e));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-leave-requests"] });
