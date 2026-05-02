@@ -209,6 +209,21 @@ const StaffHome = () => {
       const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
       if (!checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned. Contact Admin.");
 
+      // ---- Block clock-in if on approved leave today (MYT) ----
+      {
+        const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+        const todayMyt = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}`;
+        const { data: leaveToday } = await supabase
+          .from("leave_records")
+          .select("id")
+          .eq("staff_profile_id", profile.id)
+          .eq("status", "approved" as any)
+          .eq("date", todayMyt)
+          .limit(1);
+        if (leaveToday && leaveToday.length > 0) {
+          throw new Error("🚫 You are on approved leave today.");
+        }
+      }
       // ---- Device binding (with graceful fallback) ----
       let deviceFlagMissing = false;
       if (profile.is_device_binding_required) {
