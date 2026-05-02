@@ -207,13 +207,24 @@ const StaffLeave = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Start</Label>
-                <Input type="date" className="h-12 rounded-xl" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+                <Input
+                  type="date"
+                  className="h-12 rounded-xl"
+                  value={form.start_date}
+                  min={form.leave_type === "AL"
+                    ? new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0]
+                    : undefined}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>End</Label>
                 <Input type="date" className="h-12 rounded-xl" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
             </div>
+            {form.leave_type === "AL" && (
+              <p className="text-xs text-muted-foreground">⚠️ AL must be applied at least 3 days in advance. Use EL for emergencies.</p>
+            )}
             <div className="space-y-2">
               <Label>Reason</Label>
               <Textarea placeholder="Reason..." className="rounded-xl min-h-[80px]" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />
