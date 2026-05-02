@@ -42,27 +42,50 @@ const LeaveApprovalInbox = () => {
 
   const approveMutation = useMutation({
     mutationFn: async (leave: any) => {
-      // Update leave status
-      const { error } = await supabase
+      // For AL: count weekdays in this group (same staff + same end_date + AL + pending) and check balance
+      if (leave.leave_type === "AL" && leave.staff_profiles) {
+        const { data: groupRows } = await supabase
+          .from("leave_records")
+          .select("date")
+          .eq("staff_profile_id", leave.staff_profiles.id)
+          .eq("leave_type", "AL" as any)
+          .eq("status", "pending" as any)
+          .eq("end_date", leave.end_date ?? leave.date);
+        const weekdays = (groupRows ?? []).filter((r: any) => {
+          const d = new Date(r.date + "T00:00:00").getDay();
+          return d !== 0 && d !== 6;
+        }).length || 1;
+        const balance = leave.staff_profiles.al_balance as number;
+        if (weekdays > balance) {
+          throw new Error(`Insufficient AL balance: needs ${weekdays} day(s), has ${balance}.`);
+        }
+        const { error: balErr } = await supabase
+          .from("staff_profiles")
+          .update({ al_balance: Math.max(0, balance - weekdays) })
+          .eq("id", leave.staff_profiles.id);
+        if (balErr) throw balErr;
+      } else if (leave.leave_type === "MC" && leave.staff_profiles) {
+        const balance = leave.staff_profiles.mc_balance as number;
+        await supabase
+          .from("staff_profiles")
+          .update({ mc_balance: Math.max(0, balance - 1) })
+          .eq("id", leave.staff_profiles.id);
+      }
+
+      // Update all matching pending rows in this request group to approved
+      const groupFilter = supabase
         .from("leave_records")
         .update({
           status: "approved" as any,
           approved_by: user!.id,
           approved_at: new Date().toISOString(),
         })
-        .eq("id", leave.id);
+        .eq("staff_profile_id", leave.staff_profiles.id)
+        .eq("leave_type", leave.leave_type)
+        .eq("status", "pending" as any)
+        .eq("end_date", leave.end_date ?? leave.date);
+      const { error } = await groupFilter;
       if (error) throw error;
-
-      // Auto-deduct balance for AL/MC
-      if ((leave.leave_type === "AL" || leave.leave_type === "MC") && leave.staff_profiles) {
-        const field = leave.leave_type === "AL" ? "al_balance" : "mc_balance";
-        const currentBalance = leave.staff_profiles[field] as number;
-        const newBalance = Math.max(0, currentBalance - 1);
-        await supabase
-          .from("staff_profiles")
-          .update(field === "al_balance" ? { al_balance: newBalance } : { mc_balance: newBalance })
-          .eq("id", leave.staff_profiles.id);
-      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["pending-leave-requests"] });
@@ -140,9 +163,11 @@ const LeaveApprovalInbox = () => {
                     <TableCell className="text-sm max-w-[150px] truncate">{lr.reason || "—"}</TableCell>
                     <TableCell>
                       {lr.mc_file_url ? (
-                        <a href={lr.mc_file_url} target="_blank" rel="noopener noreferrer">
-                          <FileText className="h-4 w-4 text-primary" />
-                        </a>
+                        <Button asChild size="sm" variant="outline" className="h-8">
+                          <a href={lr.mc_file_url} target="_blank" rel="noopener noreferrer">
+                            <FileText className="h-3.5 w-3.5 mr-1" /> View Document
+                          </a>
+                        </Button>
                       ) : "—"}
                     </TableCell>
                     <TableCell className="text-xs">
