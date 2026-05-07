@@ -8,7 +8,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, CalendarDays } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const HolidayCalendar = () => {
   const { toast } = useToast();
@@ -76,9 +77,16 @@ const HolidayCalendar = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i}>{Array.from({ length: 4 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              ))
             ) : holidays.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">No holidays added.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={4} className="py-12 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <CalendarDays className="h-7 w-7 opacity-30" />
+                  <p className="font-medium">No holidays added.</p>
+                </div>
+              </TableCell></TableRow>
             ) : (
               holidays.map((h: any) => (
                 <TableRow key={h.id}>

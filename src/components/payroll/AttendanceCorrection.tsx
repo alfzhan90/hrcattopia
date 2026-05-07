@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil } from "lucide-react";
+import { Pencil, ClipboardList } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { calcRestHours, calcNetHours, calcDailyOt } from "@/lib/payroll";
 
@@ -153,9 +154,16 @@ const AttendanceCorrection = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              Array.from({ length: 4 }).map((_, i) => (
+                <TableRow key={i}>{Array.from({ length: 10 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              ))
             ) : logs.length === 0 ? (
-              <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No records for this date.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={10} className="py-12 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <ClipboardList className="h-7 w-7 opacity-30" />
+                  <p className="font-medium">No records for this date.</p>
+                </div>
+              </TableCell></TableRow>
             ) : (
               logs.map((log) => {
                 const staff = staffMap[log.user_id];

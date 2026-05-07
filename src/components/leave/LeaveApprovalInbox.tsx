@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle, XCircle, FileText } from "lucide-react";
+import { CheckCircle, XCircle, FileText, InboxIcon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const LeaveApprovalInbox = () => {
   const { user } = useAuth();
@@ -146,9 +147,16 @@ const LeaveApprovalInbox = () => {
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>{Array.from({ length: 7 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+                ))
               ) : pendingLeaves.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No pending requests.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-12 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <InboxIcon className="h-7 w-7 opacity-30" />
+                    <p className="font-medium">No pending requests.</p>
+                  </div>
+                </TableCell></TableRow>
               ) : (
                 pendingLeaves.map((lr: any) => (
                   <TableRow key={lr.id}>

@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calculator, CheckCircle, FileText } from "lucide-react";
+import { Calculator, CheckCircle, FileText, BarChart3 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { jsPDF } from "jspdf";
@@ -563,9 +564,17 @@ const PayrollProcessing = () => {
           </TableHeader>
           <TableBody>
              {isLoading ? (
-              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>{Array.from({ length: 16 }).map((_, j) => <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>)}</TableRow>
+              ))
             ) : payrollRuns.length === 0 ? (
-              <TableRow><TableCell colSpan={16} className="text-center py-8 text-muted-foreground">No payroll data. Click "Calculate Payroll" to generate.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={16} className="py-12 text-center">
+                <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                  <BarChart3 className="h-7 w-7 opacity-30" />
+                  <p className="font-medium">No payroll data yet.</p>
+                  <p className="text-sm">Click "Calculate Payroll" to generate.</p>
+                </div>
+              </TableCell></TableRow>
             ) : (
               payrollRuns.map((run: any) => (
                 <TableRow key={run.id}>
