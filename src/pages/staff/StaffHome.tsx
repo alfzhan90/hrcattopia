@@ -518,7 +518,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="btn-tech-green h-14 text-base rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
+              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || isFreelancer) && !selectedBranchId) || ((isAreaManager || isFreelancer) && inRange === false)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
