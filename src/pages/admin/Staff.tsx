@@ -406,7 +406,7 @@ const Staff = () => {
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label>Base Rate (RM)</Label>
+          <Label>{formData.employment_type === "Freelancer" ? "Hourly Rate (RM/hour)" : "Base Rate (RM)"}</Label>
           <Input type="number" step="0.01" value={formData.base_rate} onChange={(e) => setFormData({ ...formData, base_rate: e.target.value })} />
         </div>
         <div className="space-y-2">
