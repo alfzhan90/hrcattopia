@@ -446,7 +446,7 @@ const StaffHome = () => {
     );
   }
 
-  const effectiveRadius = activeBranch ? (isFreelancer ? 100 : activeBranch.radius_meters) : null;
+  const effectiveRadius = activeBranch ? ((isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : activeBranch.radius_meters) : null;
   const inRange = distance !== null && effectiveRadius !== null ? distance <= effectiveRadius : null;
 
   return (
