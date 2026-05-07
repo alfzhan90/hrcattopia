@@ -130,8 +130,22 @@ const PayrollProcessing = () => {
         const totalUplDays = isFreelancer ? 0 : explicitUplDays + miaDays;
         const daysWorked = attendanceDates.size;
 
-        const basicPay = Number(s.base_rate);
-        const hourlyRate = calcHourlyRate(basicPay);
+        // Freelancer: base_rate is the Hourly Rate; basic pay = hourly × net hours worked.
+        // Other types: base_rate is Monthly basic; hourly rate derived from it.
+        const hourlyRate = isFreelancer ? Number(s.base_rate) : calcHourlyRate(Number(s.base_rate));
+        let freelancerNetHoursTotal = 0;
+        if (isFreelancer) {
+          (staffLogs ?? []).forEach((log) => {
+            const totalHrs = log.check_out_time
+              ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
+              : 0;
+            const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
+            freelancerNetHoursTotal += netHrs;
+          });
+        }
+        const basicPay = isFreelancer
+          ? Math.round(freelancerNetHoursTotal * hourlyRate * 100) / 100
+          : Number(s.base_rate);
 
         // Late deduction: (hourlyRate / 60) * lateMinutes (only non-waived)
         let totalLateMinutes = 0;
