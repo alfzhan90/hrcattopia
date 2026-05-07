@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { LogOut, Smartphone, Building2, User, CreditCard, Wifi, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { generateDeviceFingerprint, isSameDevice } from "@/lib/geo";
 import { useToast } from "@/hooks/use-toast";
 
@@ -60,13 +61,30 @@ const StaffProfile = () => {
   });
 
   if (!profile) {
-    return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>;
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
+        <Skeleton className="h-7 w-24" />
+        <div className="rounded-xl border overflow-hidden divide-y">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3">
+              <Skeleton className="h-4 w-4 shrink-0 rounded" />
+              <div className="flex-1 space-y-1.5">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4 w-32" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-20 w-full rounded-xl" />
+        <Skeleton className="h-28 w-full rounded-xl" />
+      </div>
+    );
   }
 
   const currentFingerprint = generateDeviceFingerprint();
   const deviceVerified = isSameDevice(profile.device_id, currentFingerprint);
 
-  const fields = [
+  const fields: { icon: typeof User; label: string; value: string; mono?: boolean }[] = [
     { icon: User, label: "Staff ID", value: profile.staff_id },
     { icon: User, label: "Full Name", value: profile.name },
     { icon: CreditCard, label: "IC Number", value: profile.ic_number },
@@ -74,7 +92,7 @@ const StaffProfile = () => {
     { icon: CreditCard, label: "SOCSO No.", value: profile.socso_number || "—" },
     { icon: Building2, label: "Branch", value: branch?.name || "—" },
     { icon: User, label: "Employment", value: profile.employment_type },
-    { icon: CreditCard, label: "Base Rate", value: `RM ${Number(profile.base_rate).toFixed(2)}` },
+    { icon: CreditCard, label: "Base Rate", value: `RM ${Number(profile.base_rate).toFixed(2)}`, mono: true },
   ];
 
   return (
@@ -84,12 +102,12 @@ const StaffProfile = () => {
       {/* Info Card */}
       <Card className="rounded-xl">
         <CardContent className="p-0 divide-y">
-          {fields.map(({ icon: Icon, label, value }) => (
+          {fields.map(({ icon: Icon, label, value, mono }) => (
             <div key={label} className="flex items-center gap-3 px-4 py-3">
               <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="text-xs text-muted-foreground">{label}</p>
-                <p className="text-sm font-medium truncate">{value}</p>
+                <p className={`text-sm font-medium truncate${mono ? " tabular-nums font-mono" : ""}`}>{value}</p>
               </div>
             </div>
           ))}
@@ -115,13 +133,13 @@ const StaffProfile = () => {
         <CardContent className="p-4">
           <p className="text-sm font-medium mb-3">Leave Balance</p>
           <div className="grid grid-cols-2 gap-3">
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold">{profile.al_balance}</p>
-              <p className="text-xs text-muted-foreground">Annual Leave</p>
+            <div className="text-center p-3 rounded-lg bg-primary/5 border border-primary/20" style={{ borderTop: "3px solid hsl(var(--primary) / 0.6)" }}>
+              <p className="text-2xl font-bold tabular-nums text-primary">{profile.al_balance}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Annual Leave</p>
             </div>
-            <div className="text-center p-3 rounded-lg bg-muted/50">
-              <p className="text-2xl font-bold">{profile.mc_balance}</p>
-              <p className="text-xs text-muted-foreground">Medical Leave</p>
+            <div className="text-center p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20" style={{ borderTop: "3px solid rgb(16 185 129 / 0.6)" }}>
+              <p className="text-2xl font-bold tabular-nums text-emerald-700">{profile.mc_balance}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Medical Leave</p>
             </div>
           </div>
         </CardContent>

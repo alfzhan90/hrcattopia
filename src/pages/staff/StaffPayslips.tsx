@@ -99,7 +99,7 @@ const StaffPayslips = () => {
                     {getPayPeriod(format(new Date(p.month), "yyyy-MM")).label}
                   </p>
                 </div>
-                <p className="font-bold text-sm">RM {Number(p.net_pay).toFixed(2)}</p>
+                <p className="font-bold text-sm tabular-nums">RM {Number(p.net_pay).toFixed(2)}</p>
               </CardContent>
             </Card>
           ))}
@@ -112,34 +112,34 @@ const StaffPayslips = () => {
           <DialogHeader><DialogTitle>Payslip — {preview && format(new Date(preview.month), "MMMM yyyy")}</DialogTitle></DialogHeader>
           {preview && (
             <div className="space-y-4 text-sm">
-              <div>
+              <div className="rounded-lg bg-muted/40 p-3 space-y-1.5">
                 <h3 className="font-semibold text-xs uppercase text-muted-foreground mb-2">Earnings</h3>
-                <div className="space-y-1">
-                  {[["Basic Pay", preview.basic_pay], ["OT Pay", preview.ot_pay], ["Allowance", preview.allowance],
-                    ["Commission", preview.commission], ["Holiday Pay", preview.holiday_pay]].map(([l, v]) => (
-                    <div key={l as string} className="flex justify-between">
-                      <span className="text-muted-foreground">{l}</span><span>{fmt(Number(v))}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between font-semibold border-t pt-1 mt-1">
-                    <span>Gross Pay</span><span>{fmt(Number(preview.gross_pay))}</span>
+                {[["Basic Pay", preview.basic_pay], ["OT Pay", preview.ot_pay], ["Allowance", preview.allowance],
+                  ["Commission", preview.commission], ["Holiday Pay", preview.holiday_pay]].map(([l, v]) => (
+                  <div key={l as string} className="flex justify-between">
+                    <span className="text-muted-foreground">{l}</span>
+                    <span className="tabular-nums font-mono text-xs">{fmt(Number(v))}</span>
                   </div>
+                ))}
+                <div className="flex justify-between font-semibold border-t border-border/60 pt-1.5 mt-0.5">
+                  <span>Gross Pay</span>
+                  <span className="tabular-nums font-mono text-xs">{fmt(Number(preview.gross_pay))}</span>
                 </div>
               </div>
-              <div>
+              <div className="rounded-lg bg-destructive/5 p-3 space-y-1.5">
                 <h3 className="font-semibold text-xs uppercase text-muted-foreground mb-2">Deductions</h3>
-                <div className="space-y-1">
-                  {[["EPF (11%)", preview.epf_employee], ["SOCSO", preview.socso_employee], ["EIS", preview.eis_employee],
-                    ["PCB", preview.pcb], ["Unpaid Leave", preview.upl_deduction]].map(([l, v]) => (
-                    <div key={l as string} className="flex justify-between">
-                      <span className="text-muted-foreground">{l}</span><span className="text-destructive">-{fmt(Number(v))}</span>
-                    </div>
-                  ))}
-                </div>
+                {[["EPF (11%)", preview.epf_employee], ["SOCSO", preview.socso_employee], ["EIS", preview.eis_employee],
+                  ["PCB", preview.pcb], ["Unpaid Leave", preview.upl_deduction]].map(([l, v]) => (
+                  <div key={l as string} className="flex justify-between">
+                    <span className="text-muted-foreground">{l}</span>
+                    <span className="tabular-nums font-mono text-xs text-destructive">-{fmt(Number(v))}</span>
+                  </div>
+                ))}
               </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Net Pay</span><span className="text-green-600">{fmt(Number(preview.net_pay))}</span>
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
+                <div className="flex justify-between text-base font-bold">
+                  <span>Net Pay</span>
+                  <span className="tabular-nums text-emerald-700">{fmt(Number(preview.net_pay))}</span>
                 </div>
               </div>
               <Button className="w-full h-12 rounded-xl" onClick={() => downloadPayslip(preview)}>

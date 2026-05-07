@@ -19,10 +19,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History, ClipboardList } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -354,12 +355,22 @@ const AttendanceRecords = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
-              </TableRow>
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 11 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
+                <TableCell colSpan={11} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <ClipboardList className="h-8 w-8 opacity-30" />
+                    <p className="font-medium">No records found.</p>
+                    <p className="text-sm">Try adjusting the date range or filters.</p>
+                  </div>
+                </TableCell>
               </TableRow>
             ) : (
               filteredLogs.map((log) => {
@@ -369,21 +380,21 @@ const AttendanceRecords = () => {
                   : "—";
                 return (
                   <TableRow key={log.id}>
-                    <TableCell>{format(new Date(log.check_in_time), "dd/MM/yyyy")}</TableCell>
+                    <TableCell className="tabular-nums">{format(new Date(log.check_in_time), "dd/MM/yyyy")}</TableCell>
                     <TableCell className="font-mono text-xs">{s?.staff_id || "—"}</TableCell>
                     <TableCell>{s?.name || "Unknown"}</TableCell>
-                    <TableCell>{format(new Date(log.check_in_time), "HH:mm")}</TableCell>
-                    <TableCell>{log.check_out_time ? format(new Date(log.check_out_time), "HH:mm") : "—"}</TableCell>
-                    <TableCell>{totalHrs}</TableCell>
-                    <TableCell>{Number(log.net_hours).toFixed(1)}</TableCell>
-                    <TableCell>{Number(log.ot_hours).toFixed(1)}</TableCell>
+                    <TableCell className="tabular-nums">{format(new Date(log.check_in_time), "HH:mm")}</TableCell>
+                    <TableCell className="tabular-nums">{log.check_out_time ? format(new Date(log.check_out_time), "HH:mm") : "—"}</TableCell>
+                    <TableCell className="tabular-nums">{totalHrs}</TableCell>
+                    <TableCell className="tabular-nums">{Number(log.net_hours).toFixed(1)}</TableCell>
+                    <TableCell className="tabular-nums">{Number(log.ot_hours).toFixed(1)}</TableCell>
                     <TableCell>
                       {log.status === "late" ? (
-                        <Badge variant="destructive" className="text-xs">
+                        <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
                           Late{log.late_waived ? " (Waived)" : ""}
                         </Badge>
                       ) : (
-                        <Badge variant="secondary" className="text-xs">On Time</Badge>
+                        <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/20">On Time</Badge>
                       )}
                     </TableCell>
                     <TableCell>{flagBadges(log.manager_notes)}</TableCell>
