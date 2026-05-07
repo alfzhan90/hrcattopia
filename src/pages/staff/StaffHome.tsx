@@ -80,7 +80,7 @@ const StaffHome = () => {
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
     : isFreelancer
-    ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
+    ? allBranchesFreelancer.find((b) => b.id === selectedBranchId) ?? null
     : branch ?? null;
 
   // Find the most recent OPEN attendance log (no check_out_time) for this user.
@@ -265,8 +265,12 @@ const StaffHome = () => {
       }
 
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
-      if (dist > checkBranch.radius_meters) {
-        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
+      const allowedRadius = isFreelancer ? 100 : checkBranch.radius_meters;
+      if (dist > allowedRadius) {
+        const msg = (isFreelancer || isAreaManager)
+          ? `📍 You are not at the ${checkBranch.name} location.`
+          : `You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`;
+        setGeoError(msg);
         throw new Error("Out of range");
       }
 
@@ -418,7 +422,8 @@ const StaffHome = () => {
     );
   }
 
-  const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
+  const effectiveRadius = activeBranch ? (isFreelancer ? 100 : activeBranch.radius_meters) : null;
+  const inRange = distance !== null && effectiveRadius !== null ? distance <= effectiveRadius : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
@@ -451,13 +456,15 @@ const StaffHome = () => {
       )}
 
       {/* Area Manager / Freelancer Branch Selector */}
-      {(isAreaManager || (isFreelancer && !profile?.branch_id)) && !activeLog && (
+      {(isAreaManager || isFreelancer) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
-            <p className="text-sm font-medium">Select Branch to Check In</p>
+            <p className="text-sm font-medium">
+              {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
+            </p>
             <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose any branch..." />
+                <SelectValue placeholder="Choose a branch..." />
               </SelectTrigger>
               <SelectContent>
                 {(isAreaManager ? allBranches : allBranchesFreelancer).map((b) => (
@@ -512,7 +519,7 @@ const StaffHome = () => {
             <Button
               size="lg"
               className="btn-tech-green h-14 text-base rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
+              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || isFreelancer) && !selectedBranchId) || ((isAreaManager || isFreelancer) && inRange === false)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
