@@ -264,6 +264,27 @@
   }
 }
 
+/* ---------- Table polish ---------- */
+thead tr th {
+  @apply bg-muted/60 text-xs font-semibold uppercase tracking-wide text-muted-foreground;
+}
+tbody tr {
+  @apply transition-colors duration-100;
+}
+tbody tr:hover {
+  @apply bg-muted/40;
+}
+
+/* ---------- Card hover ---------- */
+.card-hover {
+  @apply transition-shadow duration-200 hover:shadow-md cursor-pointer;
+}
+
+/* ---------- Numeric data ---------- */
+.tabular {
+  @apply tabular-nums slashed-zero;
+}
+
 /* Mobile bottom-nav stability — prevent Chrome/Safari layout shift */
 @supports (-webkit-touch-callout: none) {
   .safe-area-pb {

@@ -100,8 +100,9 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-carbon px-4">
-      <Card className="w-full max-w-md bg-card border-0 shadow-2xl">
+    <div className="flex min-h-screen items-center justify-center px-4"
+      style={{ background: "linear-gradient(135deg, hsl(222 47% 7%) 0%, hsl(243 40% 12%) 100%)" }}>
+      <Card className="w-full max-w-md bg-card border border-white/[0.08] shadow-2xl">
         <CardHeader className="text-center pb-2">
           {companySettings?.logo_url ? (
             <div className="flex justify-center mb-4">
@@ -148,7 +149,7 @@ const Login = () => {
                 />
               </div>
             )}
-            <Button type="submit" className="w-full h-12 text-base font-semibold" disabled={loading}>
+            <Button type="submit" className="w-full h-12 text-base font-semibold shadow-sm" disabled={loading}>
               {loading ? "Loading..." : forgotMode ? "Send Reset Link" : isSignUp ? "Sign Up" : "Sign In"}
             </Button>
           </form>

@@ -17,7 +17,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
@@ -175,7 +176,7 @@ const Staff = () => {
         toast({
           title: "✨ Identity Updated",
           description: "Email has been changed instantly. The new email is now active.",
-          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+          className: "bg-primary/10 border-primary text-foreground",
         });
       } else {
         toast({ title: "Staff updated", description: "Profile has been saved." });
@@ -208,7 +209,7 @@ const Staff = () => {
         toast({
           title: "✨ Verification Resent",
           description: "A fresh verification link has been sent to the staff member's email address.",
-          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+          className: "bg-primary/10 border-primary text-foreground",
         });
       }
     },
@@ -339,12 +340,12 @@ const Staff = () => {
                   size="icon"
                   onClick={() => resendVerificationMutation.mutate(formData.id)}
                   disabled={resendVerificationMutation.isPending}
-                  className="shrink-0 border-[#D4AF37]/30 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                  className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
                 >
                   {resendVerificationMutation.isPending ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                    <Loader2 className="h-4 w-4 animate-spin text-primary" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 text-[#D4AF37]" />
+                    <RefreshCw className="h-4 w-4 text-primary" />
                   )}
                 </Button>
               </TooltipTrigger>
@@ -468,7 +469,7 @@ const Staff = () => {
                 <Button type="submit" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       Saving...
                     </span>
                   ) : "Save Changes"}
@@ -507,13 +508,21 @@ const Staff = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
-              </TableRow>
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 8 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : filteredStaff.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  {search ? "No matching staff found." : "No staff members yet."}
+                <TableCell colSpan={8} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Users className="h-8 w-8 opacity-30" />
+                    <p className="font-medium">{search ? "No matching staff found." : "No staff members yet."}</p>
+                    {!search && <p className="text-sm">Add your first staff member to get started.</p>}
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
@@ -544,7 +553,14 @@ const Staff = () => {
                   <TableCell className="text-sm text-muted-foreground">{s.ic_number}</TableCell>
                   <TableCell>{getBranchName(s.branch_id)}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary">{s.employment_type}</Badge>
+                    <Badge className={
+                      s.employment_type === "Monthly-FT" ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary/20" :
+                      s.employment_type === "Hourly-FT"  ? "bg-sky-500/10 text-sky-600 border-sky-500/20 hover:bg-sky-500/20" :
+                      s.employment_type === "Area-Manager" ? "bg-amber-500/10 text-amber-600 border-amber-500/20 hover:bg-amber-500/20" :
+                      "bg-orange-500/10 text-orange-600 border-orange-500/20 hover:bg-orange-500/20"
+                    } variant="outline">
+                      {s.employment_type}
+                    </Badge>
                   </TableCell>
                    <TableCell>
                     <div className="flex items-center gap-2">
