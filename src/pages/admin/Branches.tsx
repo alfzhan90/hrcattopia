@@ -12,7 +12,8 @@ import {
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Pencil, Trash2, MapPin, Save } from "lucide-react";
+import { Plus, Pencil, Trash2, MapPin, Save, Building2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import BranchMap from "@/components/BranchMap";
 import type { Tables } from "@/integrations/supabase/types";
 
@@ -286,38 +287,45 @@ const Branches = () => {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  Loading...
-                </TableCell>
-              </TableRow>
+              Array.from({ length: 3 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 6 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
             ) : branches.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No branches yet. Click "Add Branch" or click on the map to get started.
+                <TableCell colSpan={6} className="py-16 text-center">
+                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                    <Building2 className="h-8 w-8 opacity-30" />
+                    <p className="font-medium">No branches yet.</p>
+                    <p className="text-sm">Click "Add Branch" or tap the map to set coordinates.</p>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : (
               branches.map((branch) => (
                 <TableRow key={branch.id}>
                   <TableCell className="font-medium">{branch.name}</TableCell>
-                  <TableCell>{branch.address}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="text-sm text-muted-foreground max-w-[180px] truncate">{branch.address}</TableCell>
+                  <TableCell className="text-sm text-muted-foreground tabular-nums font-mono text-xs">
                     {branch.latitude.toFixed(4)}, {branch.longitude.toFixed(4)}
                   </TableCell>
-                  <TableCell>{branch.radius_meters}m</TableCell>
-                  <TableCell className="text-sm">
+                  <TableCell className="tabular-nums">{branch.radius_meters}m</TableCell>
+                  <TableCell className="text-sm tabular-nums">
                     {(branch as any).scheduled_start ?? "09:30"} / {(branch as any).grace_period_minutes ?? 10}min
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => openEdit(branch)}>
+                      <Button size="icon" variant="ghost" onClick={() => openEdit(branch)} aria-label="Edit branch">
                         <Pencil className="h-4 w-4" />
                       </Button>
                       <Button
                         size="icon"
                         variant="ghost"
                         onClick={() => deleteMutation.mutate(branch.id)}
+                        aria-label="Delete branch"
                       >
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>

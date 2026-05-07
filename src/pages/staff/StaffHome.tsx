@@ -488,7 +488,7 @@ const StaffHome = () => {
                 {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
               </p>
               {autoDetected && selectedBranchId && (
-                <Badge variant="secondary" className="text-[10px]">📍 Location Detected</Badge>
+                <Badge variant="secondary" className="text-[10px] gap-1"><MapPin className="h-2.5 w-2.5" /> Detected</Badge>
               )}
             </div>
             <Select
@@ -529,7 +529,7 @@ const StaffHome = () => {
           {activeLog && (
             <div className="text-center py-3">
               <p className="text-xs text-muted-foreground uppercase tracking-wider">Working Time</p>
-              <p className="text-4xl font-mono font-bold tracking-tight mt-1">{elapsed}</p>
+              <p className="text-4xl font-mono font-bold tracking-tight tabular-nums mt-1">{elapsed}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Since {new Date(activeLog.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </p>
@@ -583,24 +583,24 @@ const StaffHome = () => {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="rounded-xl">
+        <Card className="rounded-xl border-t-2 border-t-primary/40">
           <CardContent className="p-3 text-center">
-            <Calendar className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-            <p className="text-lg font-bold">{profile.al_balance}</p>
+            <Calendar className="h-4 w-4 mx-auto text-primary/70 mb-1" />
+            <p className="text-lg font-bold tabular-nums">{profile.al_balance}</p>
             <p className="text-[10px] text-muted-foreground leading-tight">Leave Left</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl">
+        <Card className="rounded-xl border-t-2 border-t-amber-400/60">
           <CardContent className="p-3 text-center">
-            <TrendingUp className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-            <p className="text-lg font-bold">{monthOt.toFixed(1)}</p>
+            <TrendingUp className="h-4 w-4 mx-auto text-amber-500/70 mb-1" />
+            <p className="text-lg font-bold tabular-nums">{monthOt.toFixed(1)}</p>
             <p className="text-[10px] text-muted-foreground leading-tight">OT Hours</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl">
+        <Card className="rounded-xl border-t-2 border-t-emerald-400/60">
           <CardContent className="p-3 text-center">
-            <FileText className="h-4 w-4 mx-auto text-muted-foreground mb-1" />
-            <p className="text-lg font-bold">
+            <FileText className="h-4 w-4 mx-auto text-emerald-600/70 mb-1" />
+            <p className="text-lg font-bold tabular-nums">
               {latestPayslip ? `RM${Number(latestPayslip.net_pay).toFixed(0)}` : "—"}
             </p>
             <p className="text-[10px] text-muted-foreground leading-tight">Last Pay</p>
