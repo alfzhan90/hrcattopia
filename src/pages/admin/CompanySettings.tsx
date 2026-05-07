@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Save, Upload, Building2 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const CompanySettings = () => {
   const { toast } = useToast();
@@ -105,8 +106,27 @@ const CompanySettings = () => {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="p-6 space-y-6">
+        <div className="space-y-1">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-xl border p-6 space-y-4">
+            <Skeleton className="h-5 w-36 mb-2" />
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="space-y-1.5">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-10 w-full rounded-md" />
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl border p-6 space-y-4">
+            <Skeleton className="h-5 w-32 mb-2" />
+            <Skeleton className="h-32 w-full rounded-lg" />
+            <Skeleton className="h-9 w-32 rounded-md" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -182,9 +202,12 @@ const CompanySettings = () => {
                 </Button>
               </div>
             ) : (
-              <div className="flex flex-col items-center gap-4 py-8 border-2 border-dashed rounded-lg">
-                <Building2 className="h-12 w-12 text-muted-foreground" />
+              <div className="flex flex-col items-center gap-3 py-8 border-2 border-dashed border-border rounded-lg bg-muted/20">
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Building2 className="h-8 w-8 text-primary/60" />
+                </div>
                 <p className="text-sm text-muted-foreground">No logo uploaded yet</p>
+                <p className="text-xs text-muted-foreground">PNG, JPG, or SVG recommended</p>
               </div>
             )}
             <div>

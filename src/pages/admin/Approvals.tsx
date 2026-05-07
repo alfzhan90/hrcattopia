@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { CheckSquare, Check, X, Clock, MapPin } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs"> & {
@@ -116,11 +117,33 @@ const Approvals = () => {
       </div>
 
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="space-y-1.5">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-3 w-48" />
+                <Skeleton className="h-3 w-36" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : logs.length === 0 ? (
         <Card>
-          <CardContent className="pt-6 text-sm text-muted-foreground text-center">
-            No {filter === "pending_approval" ? "pending" : filter} records.
+          <CardContent className="py-12 text-center">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <CheckSquare className="h-8 w-8 opacity-30" />
+              <p className="font-medium">No {filter === "pending_approval" ? "pending" : filter} records.</p>
+              {filter === "pending_approval" && <p className="text-sm">All emergency check-ins have been reviewed.</p>}
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -137,10 +160,12 @@ const Approvals = () => {
                       <CardTitle className="text-base">{s?.name ?? "Unknown"}</CardTitle>
                       <p className="text-xs text-muted-foreground font-mono">{s?.staff_id ?? log.user_id.slice(0, 8)}</p>
                     </div>
-                    <Badge variant={
-                      log.payment_status === "approved" ? "default" :
-                      log.payment_status === "rejected" ? "destructive" :
-                      "secondary"
+                    <Badge variant="outline" className={
+                      log.payment_status === "approved"
+                        ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                        : log.payment_status === "rejected"
+                        ? "bg-destructive/10 text-destructive border-destructive/20"
+                        : "bg-warning/10 text-warning border-warning/20"
                     }>
                       {log.payment_status === "pending_approval" ? "Pending" : log.payment_status}
                     </Badge>
@@ -151,15 +176,15 @@ const Approvals = () => {
                     <p className="flex items-center gap-1 text-muted-foreground">
                       <MapPin className="h-3 w-3" /> {branchName ?? "—"}
                     </p>
-                    <p className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-3 w-3" />
+                    <p className="flex items-center gap-1 text-muted-foreground tabular-nums">
+                      <Clock className="h-3 w-3 shrink-0" />
                       {new Date(log.check_in_time).toLocaleString()}
                       {log.check_out_time && ` → ${new Date(log.check_out_time).toLocaleTimeString()}`}
                     </p>
                   </div>
                   {log.net_hours > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      Net hours: {log.net_hours} • OT: {log.ot_hours}
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      Net hours: {Number(log.net_hours).toFixed(1)} • OT: {Number(log.ot_hours).toFixed(1)}
                     </p>
                   )}
 
