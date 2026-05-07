@@ -178,15 +178,36 @@ const StaffHome = () => {
 
   // GPS watch
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) { setGpsDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsDenied(false);
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
-      }, () => {}, { enableHighAccuracy: true }
+      },
+      (err) => { if (err?.code === err?.PERMISSION_DENIED) setGpsDenied(true); },
+      { enableHighAccuracy: true }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [activeBranch]);
+
+  // Auto-suggest closest branch within 200m for Area Managers / Freelancers
+  useEffect(() => {
+    if (!userPos) return;
+    if (!(isAreaManager || isFreelancer)) return;
+    if (selectedBranchId && autoDetected === false) return; // user picked manually
+    const list = isAreaManager ? allBranches : allBranchesFreelancer;
+    if (!list.length) return;
+    let closest: { id: string; dist: number } | null = null;
+    for (const b of list) {
+      const d = haversineDistance(userPos.lat, userPos.lng, b.latitude, b.longitude);
+      if (!closest || d < closest.dist) closest = { id: b.id, dist: d };
+    }
+    if (closest && closest.dist <= AUTO_SUGGEST_RADIUS && closest.id !== selectedBranchId) {
+      setSelectedBranchId(closest.id);
+      setAutoDetected(true);
+    }
+  }, [userPos, isAreaManager, isFreelancer, allBranches, allBranchesFreelancer]);
 
   // Live timer
   useEffect(() => {
