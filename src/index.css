@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -6,90 +6,90 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 7%;
+    --background: 220 14% 96%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 7%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 7%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 43 72% 52%;
+    --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 0 0% 7%;
+    --secondary: 220 14% 94%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 20% 96%;
+    --muted: 220 14% 94%;
     --muted-foreground: 215 16% 47%;
 
-    --accent: 43 72% 52%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 243 55% 96%;
+    --accent-foreground: 243 75% 45%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 43 72% 52%;
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 243 75% 59%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 72% 52%;
-    --sidebar-primary-foreground: 0 0% 7%;
-    --sidebar-accent: 0 0% 14%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 18%;
-    --sidebar-ring: 43 72% 52%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 243 75% 62%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 13%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 0 0% 16%;
+    --sidebar-ring: 243 75% 62%;
 
-    --gold: 43 72% 52%;
-    --gold-foreground: 0 0% 7%;
-    --gold-muted: 43 40% 75%;
+    --gold: 243 75% 59%;
+    --gold-foreground: 0 0% 100%;
+    --gold-muted: 243 60% 82%;
     --carbon: 0 0% 7%;
-    --carbon-light: 0 0% 14%;
-    --platinum: 214 32% 91%;
+    --carbon-light: 0 0% 13%;
+    --platinum: 220 13% 89%;
   }
 
   .dark {
-    --background: 0 0% 7%;
-    --foreground: 0 0% 95%;
+    --background: 222 47% 7%;
+    --foreground: 215 20% 90%;
 
-    --card: 0 0% 10%;
-    --card-foreground: 0 0% 95%;
+    --card: 222 47% 10%;
+    --card-foreground: 215 20% 90%;
 
-    --popover: 0 0% 10%;
-    --popover-foreground: 0 0% 95%;
+    --popover: 222 47% 10%;
+    --popover-foreground: 215 20% 90%;
 
-    --primary: 43 72% 52%;
-    --primary-foreground: 0 0% 7%;
+    --primary: 234 89% 74%;
+    --primary-foreground: 222 47% 7%;
 
-    --secondary: 0 0% 14%;
-    --secondary-foreground: 0 0% 95%;
+    --secondary: 217 33% 14%;
+    --secondary-foreground: 215 20% 90%;
 
-    --muted: 0 0% 14%;
-    --muted-foreground: 0 0% 64%;
+    --muted: 217 33% 14%;
+    --muted-foreground: 215 20% 60%;
 
-    --accent: 0 0% 14%;
-    --accent-foreground: 0 0% 95%;
+    --accent: 217 33% 14%;
+    --accent-foreground: 215 20% 90%;
 
     --destructive: 0 63% 31%;
     --destructive-foreground: 0 0% 95%;
 
-    --border: 0 0% 18%;
-    --input: 0 0% 18%;
-    --ring: 43 72% 52%;
+    --border: 217 33% 18%;
+    --input: 217 33% 18%;
+    --ring: 234 89% 74%;
 
     --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 43 72% 52%;
-    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-foreground: 0 0% 92%;
+    --sidebar-primary: 234 89% 74%;
+    --sidebar-primary-foreground: 222 47% 7%;
     --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-accent-foreground: 0 0% 92%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 43 72% 52%;
+    --sidebar-ring: 234 89% 74%;
   }
 }
 
@@ -100,11 +100,11 @@
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     @apply font-bold tracking-tight;
   }
 }
@@ -112,29 +112,29 @@
 @layer components {
   .kpi-card {
     @apply bg-card rounded-xl border shadow-sm overflow-hidden;
-    border-top: 3px solid hsl(var(--gold));
+    border-top: 3px solid hsl(var(--primary));
   }
 
   .gold-avatar {
     @apply inline-flex items-center justify-center rounded-full font-bold;
-    background: hsl(var(--gold) / 0.15);
-    color: hsl(var(--gold));
+    background: hsl(var(--primary) / 0.12);
+    color: hsl(var(--primary));
   }
 
   .status-dot {
     @apply inline-block h-2.5 w-2.5 rounded-full;
   }
   .status-dot--active {
-    background: hsl(var(--gold));
+    background: hsl(var(--primary));
   }
   .status-dot--inactive {
     @apply bg-muted-foreground/40;
   }
 
   .gold-fab {
-    @apply fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-xl transition-transform active:scale-95;
-    background: hsl(var(--gold));
-    color: hsl(var(--gold-foreground));
+    @apply fixed bottom-20 right-4 z-50 h-14 w-14 rounded-full shadow-lg flex items-center justify-center text-xl transition-all duration-200 active:scale-95 hover:shadow-xl hover:scale-105;
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
   }
 
   .admin-bottom-dock {

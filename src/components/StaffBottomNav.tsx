@@ -32,7 +32,7 @@ const StaffBottomNav = () => {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur safe-area-pb"
-      style={{ background: "hsl(0 0% 7% / 0.97)", borderColor: "hsl(0 0% 18%)" }}>
+      style={{ background: "hsl(0 0% 7% / 0.97)", borderColor: "hsl(0 0% 16%)" }}>
       <div className="flex h-16 items-center justify-around max-w-lg mx-auto">
         {tabs.map(({ to, icon: Icon, label }) => (
           <NavLink
@@ -40,13 +40,25 @@ const StaffBottomNav = () => {
             to={to}
             className={({ isActive }) =>
               cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs font-medium transition-colors",
-                isActive ? "text-gold" : "text-muted-foreground"
+                "relative flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )
             }
           >
-            <Icon className="h-5 w-5" />
-            <span>{label}</span>
+            {({ isActive }) => (
+              <>
+                {isActive && (
+                  <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full bg-primary" />
+                )}
+                <div className={cn(
+                  "p-1 rounded-lg transition-all duration-200",
+                  isActive ? "bg-primary/15" : ""
+                )}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <span>{label}</span>
+              </>
+            )}
           </NavLink>
         ))}
       </div>

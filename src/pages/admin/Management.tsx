@@ -281,8 +281,9 @@ const Management = () => {
                     {activeInBranch.slice(0, 3).map((log) => {
                       const s = staffMap[log.user_id];
                       return (
-                        <p key={log.id} className="text-xs text-muted-foreground truncate">
-                          🟢 {s?.name ?? "Unknown"} — {new Date(log.check_in_time).toLocaleTimeString()}
+                        <p key={log.id} className="text-xs text-muted-foreground truncate flex items-center gap-1.5">
+                          <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                          {s?.name ?? "Unknown"} — {new Date(log.check_in_time).toLocaleTimeString()}
                         </p>
                       );
                     })}
