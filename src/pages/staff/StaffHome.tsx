@@ -422,7 +422,8 @@ const StaffHome = () => {
     );
   }
 
-  const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
+  const effectiveRadius = activeBranch ? (isFreelancer ? 100 : activeBranch.radius_meters) : null;
+  const inRange = distance !== null && effectiveRadius !== null ? distance <= effectiveRadius : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
