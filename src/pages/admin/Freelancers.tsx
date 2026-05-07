@@ -13,7 +13,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, Pencil, FileText, Download, ArrowRightLeft, Clock, RefreshCw, Loader2 } from "lucide-react";
+import { Plus, Search, Pencil, FileText, Download, ArrowRightLeft, Clock, RefreshCw, Loader2, Users } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
 import { format } from "date-fns";
@@ -235,7 +236,7 @@ const Freelancers = () => {
         toast({
           title: "✨ Identity Updated",
           description: "Email has been changed instantly. The new email is now active.",
-          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+          className: "bg-primary/10 border-primary/40 text-foreground",
         });
       } else {
         toast({ title: "Updated", description: "Freelancer profile saved." });
@@ -265,7 +266,7 @@ const Freelancers = () => {
         toast({
           title: "✨ Verification Resent",
           description: "A fresh verification link has been sent to the freelancer's email address.",
-          className: "bg-[#D4AF37]/10 border-[#D4AF37] text-foreground",
+          className: "bg-primary/10 border-primary/40 text-foreground",
         });
       }
     },
@@ -429,9 +430,23 @@ const Freelancers = () => {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Loading...</TableCell></TableRow>
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 8 }).map((_, j) => (
+                        <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                      ))}
+                    </TableRow>
+                  ))
                 ) : filteredFreelancers.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No freelancers yet.</TableCell></TableRow>
+                  <TableRow>
+                    <TableCell colSpan={8} className="py-16 text-center">
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <Users className="h-8 w-8 opacity-30" />
+                        <p className="font-medium">No freelancers yet.</p>
+                        <p className="text-sm">Click "Add Freelancer" to invite a casual worker.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 ) : (
                   filteredFreelancers.map((f) => {
                     const hours = getFreelancerHours(f.user_id);
@@ -446,14 +461,14 @@ const Freelancers = () => {
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">{f.ic_number}</TableCell>
                         <TableCell>{getBranchName(f.branch_id)}</TableCell>
-                        <TableCell>RM {Number(f.base_rate).toFixed(2)}</TableCell>
+                        <TableCell className="tabular-nums">RM {Number(f.base_rate).toFixed(2)}</TableCell>
                         <TableCell>
-                          <Badge variant={f.freelancer_ot_enabled ? "default" : "outline"}>
+                          <Badge variant={f.freelancer_ot_enabled ? "default" : "outline"} className={f.freelancer_ot_enabled ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : ""}>
                             {f.freelancer_ot_enabled ? "Enabled" : "Off"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={hours > 0 ? "default" : "secondary"}>{hours.toFixed(1)}h</Badge>
+                          <Badge variant={hours > 0 ? "default" : "secondary"} className={hours > 0 ? "tabular-nums bg-primary/10 text-primary border-primary/20" : "tabular-nums"}>{hours.toFixed(1)}h</Badge>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
@@ -495,7 +510,13 @@ const Freelancers = () => {
             <p className="text-sm text-muted-foreground">Period: {period.label}</p>
           </div>
           {invoices.length === 0 ? (
-            <Card><CardContent className="p-6 text-center text-muted-foreground">No invoices for this period.</CardContent></Card>
+            <Card><CardContent className="py-12 text-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <FileText className="h-8 w-8 opacity-30" />
+                <p className="font-medium">No invoices for this period.</p>
+                <p className="text-sm">Generate invoices from the Roster tab.</p>
+              </div>
+            </CardContent></Card>
           ) : (
             <div className="rounded-lg border">
               <Table>
@@ -515,10 +536,18 @@ const Freelancers = () => {
                     <TableRow key={inv.id}>
                       <TableCell className="font-mono text-sm">{inv.invoice_number}</TableCell>
                       <TableCell>{inv.staff_profiles?.name ?? "—"}</TableCell>
-                      <TableCell>{Number(inv.total_hours).toFixed(1)}</TableCell>
+                      <TableCell className="tabular-nums">{Number(inv.total_hours).toFixed(1)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">{inv.service_description}</TableCell>
-                      <TableCell className="font-semibold">RM {Number(inv.total_payable).toFixed(2)}</TableCell>
-                      <TableCell><Badge variant={inv.status === "paid" ? "default" : inv.status === "issued" ? "secondary" : "outline"}>{inv.status}</Badge></TableCell>
+                      <TableCell className="font-semibold tabular-nums">RM {Number(inv.total_payable).toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={
+                          inv.status === "paid"
+                            ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20"
+                            : inv.status === "issued"
+                            ? "bg-primary/10 text-primary border-primary/20"
+                            : ""
+                        }>{inv.status}</Badge>
+                      </TableCell>
                       <TableCell>
                         <Button size="sm" variant="ghost" onClick={() => downloadInvoice(inv)}><Download className="h-4 w-4" /></Button>
                       </TableCell>
@@ -549,12 +578,12 @@ const Freelancers = () => {
                         size="icon"
                         onClick={() => resendVerificationMutation.mutate(editForm.id)}
                         disabled={resendVerificationMutation.isPending}
-                        className="shrink-0 border-[#D4AF37]/30 hover:bg-[#D4AF37]/10 hover:border-[#D4AF37]"
+                        className="shrink-0 border-primary/30 hover:bg-primary/10 hover:border-primary"
                       >
                         {resendVerificationMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
                         ) : (
-                          <RefreshCw className="h-4 w-4 text-[#D4AF37]" />
+                          <RefreshCw className="h-4 w-4 text-primary" />
                         )}
                       </Button>
                     </TooltipTrigger>
@@ -597,7 +626,7 @@ const Freelancers = () => {
                 <Button type="submit" disabled={updateMutation.isPending}>
                   {updateMutation.isPending ? (
                     <span className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#D4AF37]" />
+                      <Loader2 className="h-4 w-4 animate-spin text-primary" />
                       Saving...
                     </span>
                   ) : "Save"}
