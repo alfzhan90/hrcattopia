@@ -77,6 +77,9 @@ const StaffHome = () => {
   });
 
   const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [autoDetected, setAutoDetected] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
+  const AUTO_SUGGEST_RADIUS = 200;
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
     : isFreelancer
