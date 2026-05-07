@@ -77,6 +77,9 @@ const StaffHome = () => {
   });
 
   const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [autoDetected, setAutoDetected] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
+  const AUTO_SUGGEST_RADIUS = 200;
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
     : isFreelancer
@@ -175,15 +178,36 @@ const StaffHome = () => {
 
   // GPS watch
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) { setGpsDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsDenied(false);
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
-      }, () => {}, { enableHighAccuracy: true }
+      },
+      (err) => { if (err?.code === err?.PERMISSION_DENIED) setGpsDenied(true); },
+      { enableHighAccuracy: true }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [activeBranch]);
+
+  // Auto-suggest closest branch within 200m for Area Managers / Freelancers
+  useEffect(() => {
+    if (!userPos) return;
+    if (!(isAreaManager || isFreelancer)) return;
+    if (selectedBranchId && autoDetected === false) return; // user picked manually
+    const list = isAreaManager ? allBranches : allBranchesFreelancer;
+    if (!list.length) return;
+    let closest: { id: string; dist: number } | null = null;
+    for (const b of list) {
+      const d = haversineDistance(userPos.lat, userPos.lng, b.latitude, b.longitude);
+      if (!closest || d < closest.dist) closest = { id: b.id, dist: d };
+    }
+    if (closest && closest.dist <= AUTO_SUGGEST_RADIUS && closest.id !== selectedBranchId) {
+      setSelectedBranchId(closest.id);
+      setAutoDetected(true);
+    }
+  }, [userPos, isAreaManager, isFreelancer, allBranches, allBranchesFreelancer]);
 
   // Live timer
   useEffect(() => {
@@ -265,7 +289,7 @@ const StaffHome = () => {
       }
 
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
-      const allowedRadius = isFreelancer ? 100 : checkBranch.radius_meters;
+      const allowedRadius = (isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : checkBranch.radius_meters;
       if (dist > allowedRadius) {
         const msg = (isFreelancer || isAreaManager)
           ? `📍 You are not at the ${checkBranch.name} location.`
@@ -422,7 +446,7 @@ const StaffHome = () => {
     );
   }
 
-  const effectiveRadius = activeBranch ? (isFreelancer ? 100 : activeBranch.radius_meters) : null;
+  const effectiveRadius = activeBranch ? ((isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : activeBranch.radius_meters) : null;
   const inRange = distance !== null && effectiveRadius !== null ? distance <= effectiveRadius : null;
 
   return (
@@ -459,12 +483,20 @@ const StaffHome = () => {
       {(isAreaManager || isFreelancer) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
-            <p className="text-sm font-medium">
-              {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
-            </p>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
+              </p>
+              {autoDetected && selectedBranchId && (
+                <Badge variant="secondary" className="text-[10px]">📍 Location Detected</Badge>
+              )}
+            </div>
+            <Select
+              value={selectedBranchId}
+              onValueChange={(v) => { setSelectedBranchId(v); setAutoDetected(false); }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Choose a branch..." />
+                <SelectValue placeholder="Choose any branch..." />
               </SelectTrigger>
               <SelectContent>
                 {(isAreaManager ? allBranches : allBranchesFreelancer).map((b) => (
@@ -472,6 +504,9 @@ const StaffHome = () => {
                 ))}
               </SelectContent>
             </Select>
+            {gpsDenied && (
+              <p className="text-xs text-muted-foreground">Please enable location for faster check-in.</p>
+            )}
           </CardContent>
         </Card>
       )}
