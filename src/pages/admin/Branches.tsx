@@ -4,12 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
-} from "@/components/ui/table";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger,
-} from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
 import { Plus, Pencil, Trash2, MapPin, Save } from "lucide-react";
@@ -38,10 +34,7 @@ const Branches = () => {
   const { data: branches = [], isLoading } = useQuery({
     queryKey: ["branches"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("branches")
-        .select("*")
-        .order("name");
+      const { data, error } = await supabase.from("branches").select("*").order("name");
       if (error) throw error;
       return data as Branch[];
     },
@@ -68,11 +61,7 @@ const Branches = () => {
       };
 
       if (editingBranch) {
-        const { data, error } = await supabase
-          .from("branches")
-          .update(payload)
-          .eq("id", editingBranch.id)
-          .select();
+        const { data, error } = await supabase.from("branches").update(payload).eq("id", editingBranch.id).select();
         if (error) throw new Error(`Update failed: ${error.message} (${error.code})`);
         if (!data || data.length === 0) throw new Error("Update failed: No rows affected. Check permissions.");
       } else {
@@ -147,10 +136,18 @@ const Branches = () => {
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Branch Management</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Branch Managements</h1>
           <p className="text-muted-foreground">Manage your company branches and geofence areas.</p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); setEditingBranch(null); } else setDialogOpen(true); }}>
+        <Dialog
+          open={dialogOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setDialogOpen(false);
+              setEditingBranch(null);
+            } else setDialogOpen(true);
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -246,7 +243,14 @@ const Branches = () => {
                     Draft saved
                   </span>
                 )}
-                <Button type="button" variant="outline" onClick={() => { setDialogOpen(false); setEditingBranch(null); }}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDialogOpen(false);
+                    setEditingBranch(null);
+                  }}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={saveMutation.isPending}>
@@ -314,11 +318,7 @@ const Branches = () => {
                       <Button size="icon" variant="ghost" onClick={() => openEdit(branch)}>
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => deleteMutation.mutate(branch.id)}
-                      >
+                      <Button size="icon" variant="ghost" onClick={() => deleteMutation.mutate(branch.id)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </div>
