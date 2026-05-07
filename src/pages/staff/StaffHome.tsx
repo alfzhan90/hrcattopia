@@ -265,8 +265,12 @@ const StaffHome = () => {
       }
 
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
-      if (dist > checkBranch.radius_meters) {
-        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
+      const allowedRadius = isFreelancer ? 100 : checkBranch.radius_meters;
+      if (dist > allowedRadius) {
+        const msg = (isFreelancer || isAreaManager)
+          ? `📍 You are not at the ${checkBranch.name} location.`
+          : `You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`;
+        setGeoError(msg);
         throw new Error("Out of range");
       }
 
