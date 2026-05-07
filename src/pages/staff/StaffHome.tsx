@@ -289,7 +289,7 @@ const StaffHome = () => {
       }
 
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
-      const allowedRadius = isFreelancer ? 100 : checkBranch.radius_meters;
+      const allowedRadius = (isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : checkBranch.radius_meters;
       if (dist > allowedRadius) {
         const msg = (isFreelancer || isAreaManager)
           ? `📍 You are not at the ${checkBranch.name} location.`
