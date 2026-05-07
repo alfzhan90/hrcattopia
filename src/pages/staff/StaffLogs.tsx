@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, Clock, Filter } from "lucide-react";
+import { CalendarIcon, Clock, Filter, ClipboardList, AlertTriangle } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { getPayPeriod } from "@/lib/payroll";
@@ -40,10 +41,10 @@ const StaffLogs = () => {
 
   const statusBadge = (status: string, lateMinutes: number, waived: boolean) => {
     if (status === "late" && !waived)
-      return <Badge variant="destructive" className="text-[10px]">Late ({lateMinutes}m)</Badge>;
+      return <Badge variant="outline" className="text-[10px] tabular-nums bg-destructive/10 text-destructive border-destructive/20">Late ({lateMinutes}m)</Badge>;
     if (status === "late" && waived)
-      return <Badge variant="outline" className="text-[10px] border-yellow-500 text-yellow-600">Late (Waived)</Badge>;
-    return <Badge variant="secondary" className="text-[10px] bg-green-100 text-green-700">On Time</Badge>;
+      return <Badge variant="outline" className="text-[10px] bg-warning/10 text-warning border-warning/20">Late (Waived)</Badge>;
+    return <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-700 border-emerald-500/20">On Time</Badge>;
   };
 
   return (
@@ -96,21 +97,21 @@ const StaffLogs = () => {
 
       {/* Summary */}
       <div className="grid grid-cols-3 gap-3">
-        <Card className="rounded-xl">
+        <Card className="rounded-xl" style={{ borderTop: "3px solid hsl(var(--primary) / 0.5)" }}>
           <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold">{totalDays}</p>
+            <p className="text-lg font-bold tabular-nums text-primary">{totalDays}</p>
             <p className="text-[10px] text-muted-foreground">Days Worked</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl">
+        <Card className="rounded-xl" style={{ borderTop: "3px solid hsl(var(--primary) / 0.3)" }}>
           <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold">{totalNetHours.toFixed(1)}</p>
+            <p className="text-lg font-bold tabular-nums">{totalNetHours.toFixed(1)}</p>
             <p className="text-[10px] text-muted-foreground">Net Hours</p>
           </CardContent>
         </Card>
-        <Card className="rounded-xl">
+        <Card className="rounded-xl" style={{ borderTop: "3px solid rgb(245 158 11 / 0.5)" }}>
           <CardContent className="p-3 text-center">
-            <p className="text-lg font-bold">{totalOtHours.toFixed(1)}</p>
+            <p className="text-lg font-bold tabular-nums text-amber-600">{totalOtHours.toFixed(1)}</p>
             <p className="text-[10px] text-muted-foreground">OT Hours</p>
           </CardContent>
         </Card>
@@ -118,11 +119,29 @@ const StaffLogs = () => {
 
       {/* Logs List */}
       {isLoading ? (
-        <div className="flex justify-center py-8">
-          <div className="h-6 w-6 animate-spin rounded-full border-b-2 border-primary" />
+        <div className="space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <Card key={i} className="rounded-xl">
+              <CardContent className="p-3 space-y-2">
+                <div className="flex justify-between items-center">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+                <Skeleton className="h-3 w-40" />
+              </CardContent>
+            </Card>
+          ))}
         </div>
       ) : logs.length === 0 ? (
-        <p className="text-center text-sm text-muted-foreground py-8">No attendance records found for this period.</p>
+        <Card className="rounded-xl">
+          <CardContent className="p-8 text-center">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <ClipboardList className="h-8 w-8 opacity-30" />
+              <p className="text-sm font-medium">No records for this period.</p>
+              <p className="text-xs">Try adjusting the date range above.</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
           {logs.map((log) => (
@@ -134,7 +153,7 @@ const StaffLogs = () => {
                   </span>
                   {statusBadge(log.status, log.late_minutes, log.late_waived)}
                 </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                <div className="flex items-center gap-4 text-xs text-muted-foreground tabular-nums">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
                     {format(parseISO(log.check_in_time), "hh:mm a")}
@@ -150,7 +169,9 @@ const StaffLogs = () => {
                   </span>
                 </div>
                 {!log.check_out_time && (
-                  <p className="text-[10px] text-destructive mt-1">⚠️ Missing clock out</p>
+                  <p className="text-[10px] text-destructive mt-1 flex items-center gap-1">
+                    <AlertTriangle className="h-3 w-3 shrink-0" /> Missing clock out
+                  </p>
                 )}
               </CardContent>
             </Card>

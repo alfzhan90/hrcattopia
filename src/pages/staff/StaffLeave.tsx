@@ -12,11 +12,15 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Upload, Calendar } from "lucide-react";
+import { Plus, Upload, Calendar, AlertTriangle, CheckCircle2, CalendarOff } from "lucide-react";
 import { format } from "date-fns";
 
 const leaveLabel: Record<string, string> = { AL: "Annual", MC: "Medical", UPL: "Unpaid", EL: "Emergency" };
-const statusVariant = (s: string) => s === "approved" ? "default" as const : s === "rejected" ? "destructive" as const : "secondary" as const;
+const statusClass = (s: string) => {
+  if (s === "approved") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+  if (s === "rejected") return "bg-destructive/10 text-destructive border-destructive/20";
+  return "bg-warning/10 text-warning border-warning/20";
+};
 
 const StaffLeave = () => {
   const { user } = useAuth();
@@ -139,9 +143,9 @@ const StaffLeave = () => {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">Leave</h1>
         {profile && (
-          <div className="flex gap-3 text-xs">
-            <Badge variant="outline">AL: {profile.al_balance}</Badge>
-            <Badge variant="outline">MC: {profile.mc_balance}</Badge>
+          <div className="flex gap-2 text-xs">
+            <Badge variant="outline" className="tabular-nums bg-primary/10 text-primary border-primary/20">AL: {profile.al_balance}</Badge>
+            <Badge variant="outline" className="tabular-nums bg-emerald-500/10 text-emerald-700 border-emerald-500/20">MC: {profile.mc_balance}</Badge>
           </div>
         )}
       </div>
@@ -149,16 +153,24 @@ const StaffLeave = () => {
       {/* Leave list */}
       <div className="space-y-2">
         {leaves.length === 0 ? (
-          <Card className="rounded-xl"><CardContent className="p-6 text-center text-sm text-muted-foreground">No leave requests yet.</CardContent></Card>
+          <Card className="rounded-xl">
+            <CardContent className="p-8 text-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <CalendarOff className="h-8 w-8 opacity-30" />
+                <p className="text-sm font-medium">No leave requests yet.</p>
+                <p className="text-xs">Tap the + button to submit a request.</p>
+              </div>
+            </CardContent>
+          </Card>
         ) : leaves.map((lr: any) => (
           <Card key={lr.id} className="rounded-xl">
             <CardContent className="p-3 flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <p className="font-medium text-sm">{leaveLabel[lr.leave_type] || lr.leave_type}</p>
-                <p className="text-xs text-muted-foreground">{lr.date}{lr.end_date && lr.end_date !== lr.date ? ` → ${lr.end_date}` : ""}</p>
+                <p className="text-xs text-muted-foreground tabular-nums">{lr.date}{lr.end_date && lr.end_date !== lr.date ? ` → ${lr.end_date}` : ""}</p>
                 {lr.reason && <p className="text-xs text-muted-foreground truncate mt-0.5">{lr.reason}</p>}
               </div>
-              <Badge variant={statusVariant(lr.status)} className="shrink-0 capitalize">{lr.status}</Badge>
+              <Badge variant="outline" className={`shrink-0 capitalize ${statusClass(lr.status)}`}>{lr.status}</Badge>
             </CardContent>
           </Card>
         ))}
@@ -223,7 +235,10 @@ const StaffLeave = () => {
               </div>
             </div>
             {form.leave_type === "AL" && (
-              <p className="text-xs text-muted-foreground">⚠️ AL must be applied at least 3 days in advance. Use EL for emergencies.</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                AL must be applied at least 3 days in advance. Use EL for emergencies.
+              </p>
             )}
             <div className="space-y-2">
               <Label>Reason</Label>
@@ -234,7 +249,7 @@ const StaffLeave = () => {
                 <Label>MC Document</Label>
                 <div className="flex items-center gap-2">
                   <Input type="file" accept="image/*,.pdf" className="h-12 rounded-xl" onChange={(e) => setMcFile(e.target.files?.[0] ?? null)} />
-                  {mcFile && <Upload className="h-4 w-4 text-green-600 shrink-0" />}
+                  {mcFile && <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />}
                 </div>
               </div>
             )}
