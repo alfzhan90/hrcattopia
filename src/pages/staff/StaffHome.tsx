@@ -80,7 +80,7 @@ const StaffHome = () => {
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
     : isFreelancer
-    ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
+    ? allBranchesFreelancer.find((b) => b.id === selectedBranchId) ?? null
     : branch ?? null;
 
   // Find the most recent OPEN attendance log (no check_out_time) for this user.
