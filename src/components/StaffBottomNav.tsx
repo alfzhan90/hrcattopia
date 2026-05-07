@@ -1,12 +1,12 @@
 import { NavLink } from "react-router-dom";
-import { Home, Calendar, FileText, User, ClipboardList } from "lucide-react";
+import { Home, Calendar, FileText, User, ClipboardList, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
 const StaffBottomNav = () => {
-  const { user } = useAuth();
+  const { user, role } = useAuth();
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile-nav", user?.id],
@@ -19,28 +19,40 @@ const StaffBottomNav = () => {
   });
 
   const isFreelancer = profile?.employment_type === "Freelancer";
+  const isAreaManager = role === "area_manager";
 
-  const tabs = [
-    { to: "/staff/dashboard", icon: Home, label: "Home" },
-    { to: "/staff/logs", icon: ClipboardList, label: "My Logs" },
-    ...(!isFreelancer ? [{ to: "/staff/leave", icon: Calendar, label: "Leave" }] : []),
-    isFreelancer
-      ? { to: "/staff/invoices", icon: FileText, label: "My Invoices" }
-      : { to: "/staff/payslips", icon: FileText, label: "Payslips" },
-    { to: "/staff/profile", icon: User, label: "Profile" },
-  ];
+  const tabs = isAreaManager
+    ? [
+        { to: "/staff/dashboard", icon: Home, label: "Home", mobileLabel: "Home" },
+        { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner", mobileLabel: "Shift\nPlanner" },
+        { to: "/staff/logs", icon: ClipboardList, label: "My Logs", mobileLabel: "My\nLogs" },
+        { to: "/staff/leave", icon: Calendar, label: "Leave", mobileLabel: "Leave" },
+        { to: "/staff/payslips", icon: FileText, label: "Payslips", mobileLabel: "Pay\nslips" },
+        { to: "/staff/profile", icon: User, label: "Profile", mobileLabel: "Profile" },
+      ]
+    : [
+        { to: "/staff/dashboard", icon: Home, label: "Home", mobileLabel: "Home" },
+        { to: "/staff/logs", icon: ClipboardList, label: "My Logs", mobileLabel: "My Logs" },
+        ...(!isFreelancer ? [{ to: "/staff/leave", icon: Calendar, label: "Leave", mobileLabel: "Leave" }] : []),
+        isFreelancer
+          ? { to: "/staff/invoices", icon: FileText, label: "My Invoices", mobileLabel: "My Invoices" }
+          : { to: "/staff/payslips", icon: FileText, label: "Payslips", mobileLabel: "Payslips" },
+        { to: "/staff/profile", icon: User, label: "Profile", mobileLabel: "Profile" },
+      ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur safe-area-pb"
-      style={{ background: "hsl(0 0% 7% / 0.97)", borderColor: "hsl(0 0% 16%)" }}>
-      <div className="flex h-16 items-center justify-around max-w-lg mx-auto">
-        {tabs.map(({ to, icon: Icon, label }) => (
+    <nav className="glass-nav fixed bottom-0 left-0 right-0 z-50 safe-area-pb">
+      <div className={cn("mx-auto grid h-16 max-w-lg items-center", isAreaManager ? "grid-cols-6" : "grid-cols-5")}>
+        {tabs.map(({ to, icon: Icon, label, mobileLabel }) => (
           <NavLink
             key={to}
             to={to}
+            aria-label={label}
+            title={label}
             className={({ isActive }) =>
               cn(
-                "relative flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs font-medium transition-all duration-200",
+                "relative flex min-w-0 flex-col items-center justify-center gap-0.5 px-1 py-1 font-medium leading-none transition-all duration-200",
+                isAreaManager ? "text-[10px]" : "text-xs",
                 isActive ? "text-primary" : "text-muted-foreground hover:text-foreground"
               )
             }
@@ -54,9 +66,11 @@ const StaffBottomNav = () => {
                   "p-1 rounded-lg transition-all duration-200",
                   isActive ? "bg-primary/15" : ""
                 )}>
-                  <Icon className="h-5 w-5" />
+                  <Icon className={cn(isAreaManager ? "h-4 w-4" : "h-5 w-5")} />
                 </div>
-                <span>{label}</span>
+                <span className={cn("text-center whitespace-pre-line", isAreaManager && "max-w-[3.75rem]")}>
+                  {mobileLabel}
+                </span>
               </>
             )}
           </NavLink>

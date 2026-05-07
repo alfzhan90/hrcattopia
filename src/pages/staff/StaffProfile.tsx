@@ -1,14 +1,45 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { LogOut, Smartphone, Building2, User, CreditCard } from "lucide-react";
+import { LogOut, Smartphone, Building2, User, CreditCard, Wifi, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { generateDeviceFingerprint, isSameDevice } from "@/lib/geo";
+import { useToast } from "@/hooks/use-toast";
 
 const StaffProfile = () => {
   const { user, signOut } = useAuth();
+  const { toast } = useToast();
+  const [conn, setConn] = useState<{ status: "idle" | "checking" | "ok" | "fail"; detail?: string }>({ status: "idle" });
+
+  const runConnectionCheck = async () => {
+    setConn({ status: "checking" });
+    try {
+      const t0 = performance.now();
+      const { data: sessionData, error: sessionErr } = await supabase.auth.getSession();
+      if (sessionErr || !sessionData.session) {
+        setConn({ status: "fail", detail: "No active session — please sign in again." });
+        return;
+      }
+      const { error: profileErr } = await supabase
+        .from("staff_profiles")
+        .select("id")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      if (profileErr) {
+        setConn({ status: "fail", detail: `Database error: ${profileErr.message}` });
+        return;
+      }
+      const ms = Math.round(performance.now() - t0);
+      setConn({ status: "ok", detail: `Connected in ${ms}ms — permissions OK.` });
+      toast({ title: "Connection OK", description: `Reached server in ${ms}ms.` });
+    } catch (e: any) {
+      setConn({ status: "fail", detail: e?.message ?? "Unknown network error." });
+      toast({ title: "Connection failed", description: e?.message ?? "Unknown error", variant: "destructive" });
+    }
+  };
 
   const { data: profile } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -93,6 +124,43 @@ const StaffProfile = () => {
               <p className="text-xs text-muted-foreground">Medical Leave</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Connection Diagnostics */}
+      <Card className="rounded-xl">
+        <CardContent className="p-4 space-y-3">
+          <div className="flex items-center gap-3">
+            <Wifi className="h-5 w-5 text-muted-foreground" />
+            <div className="flex-1">
+              <p className="text-sm font-medium">Connection Diagnostics</p>
+              <p className="text-xs text-muted-foreground">
+                Check that your phone can reach the server and your account permissions are valid.
+              </p>
+            </div>
+          </div>
+          {conn.status !== "idle" && (
+            <div className="flex items-start gap-2 text-xs rounded-lg bg-muted/50 p-2">
+              {conn.status === "checking" && <Loader2 className="h-4 w-4 animate-spin shrink-0" />}
+              {conn.status === "ok" && <CheckCircle2 className="h-4 w-4 text-tech-green shrink-0" />}
+              {conn.status === "fail" && <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+              <span className={conn.status === "fail" ? "text-destructive" : "text-muted-foreground"}>
+                {conn.detail ?? (conn.status === "checking" ? "Running checks…" : "")}
+              </span>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            className="w-full h-10 rounded-lg"
+            disabled={conn.status === "checking"}
+            onClick={runConnectionCheck}
+          >
+            {conn.status === "checking" ? (
+              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Checking…</>
+            ) : (
+              <><Wifi className="h-4 w-4 mr-2" /> Check Connection</>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

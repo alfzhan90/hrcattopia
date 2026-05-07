@@ -6,36 +6,54 @@ import { Button } from "@/components/ui/button";
 import {
   Building2, Users, LogOut, ClipboardList, DollarSign, Settings,
   FileSpreadsheet, LayoutDashboard, UserCheck, Plus, UserPlus, Clock, Menu, X,
+  CalendarDays, CheckSquare,
 } from "lucide-react";
 import { useState } from "react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import ThemeToggle from "@/components/ThemeToggle";
 
-const navItems = [
+const adminNavItems = [
   { to: "/admin/company", icon: Settings, label: "Company Settings" },
   { to: "/admin/branches", icon: Building2, label: "Branches" },
   { to: "/admin/staff", icon: Users, label: "Staff" },
   { to: "/admin/records", icon: FileSpreadsheet, label: "Attendance Records" },
   { to: "/admin/attendance", icon: ClipboardList, label: "Live Attendance" },
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
   { to: "/admin/freelancers", icon: UserCheck, label: "Freelancers" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];
 
-const dockItems = [
+const managerNavItems = [
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
+  { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
+];
+
+const adminDockItems = [
   { to: "/admin/branches", icon: Building2, label: "Home" },
   { to: "/admin/attendance", icon: ClipboardList, label: "Attendance" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];
 
+const areaManagerDockItems = [
+  { to: "/admin/schedules", icon: CalendarDays, label: "Shifts" },
+  { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
+  { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
+];
+
 const AdminLayout = () => {
-  const { user, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
   const { data: companySettings } = useCompanySettings();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navItems = role === "area_manager" ? managerNavItems : adminNavItems;
+  const dockItems = role === "area_manager" ? areaManagerDockItems : adminDockItems;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
@@ -62,6 +80,7 @@ const AdminLayout = () => {
             </span>
           </div>
           <div className="flex items-center gap-1">
+            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground" />
             <Button
               variant="ghost"
               size="icon"
@@ -168,7 +187,11 @@ const AdminLayout = () => {
             </NavLink>
           ))}
         </nav>
-        <div className="p-4 border-t border-sidebar-border">
+        <div className="p-4 border-t border-sidebar-border space-y-1">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs text-sidebar-foreground/50">Theme</span>
+            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" />
+          </div>
           <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={signOut}>
             <LogOut className="h-4 w-4" />
             Sign Out

@@ -13,6 +13,8 @@ import { haversineDistance, generateDeviceFingerprint, isSameDevice, clearDevice
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
 import BranchVisitLogger from "@/components/staff/BranchVisitLogger";
+import ThemeToggle from "@/components/ThemeToggle";
+import { REMARK, appendRemark } from "@/lib/attendance-remarks";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -75,23 +77,33 @@ const StaffHome = () => {
   });
 
   const [selectedBranchId, setSelectedBranchId] = useState("");
+  const [autoDetected, setAutoDetected] = useState(false);
+  const [gpsDenied, setGpsDenied] = useState(false);
+  const AUTO_SUGGEST_RADIUS = 200;
   const activeBranch = isAreaManager
     ? allBranches.find((b) => b.id === selectedBranchId) ?? null
     : isFreelancer
-    ? (profile?.branch_id ? allBranchesFreelancer.find((b) => b.id === profile.branch_id) : allBranchesFreelancer.find((b) => b.id === selectedBranchId)) ?? null
+    ? allBranchesFreelancer.find((b) => b.id === selectedBranchId) ?? null
     : branch ?? null;
 
+  // Find the most recent OPEN attendance log (no check_out_time) for this user.
+  // We deliberately do NOT filter by today's date — using `new Date().toISOString()`
+  // returns a UTC date which causes off-by-one bugs for staff in MYT (UTC+8) who
+  // check in before 08:00 MYT but reload the page after the UTC date rolls over.
+  // Looking up by `is null` + ordering returns the open log regardless of timezone.
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("attendance_logs").select("*").eq("user_id", user!.id)
-        .gte("check_in_time", today).is("check_out_time", null).maybeSingle();
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   const { data: monthOt = 0 } = useQuery({
@@ -118,22 +130,28 @@ const StaffHome = () => {
     enabled: !!profile,
   });
 
-  // Check for missed clock-out from previous days
+  // Check for missed clock-out from previous days.
+  // We use MYT (Asia/Kuala_Lumpur) as the day boundary so that an evening reload
+  // around midnight UTC does not mis-flag today's open log as "missed".
   const { data: missedClockOut } = useQuery({
     queryKey: ["missed-clockout", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
+      // Compute today's MYT date (UTC+8) — robust against UTC date rollover.
+      const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const todayMyt = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}`;
       const { data, error } = await supabase
         .from("attendance_logs").select("id, check_in_time")
         .eq("user_id", user!.id)
-        .lt("check_in_time", today)
+        .lt("check_in_time", todayMyt)
         .is("check_out_time", null)
-        .limit(1)
-        .maybeSingle();
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    // Never let this background query throw and block the UI.
+    retry: 1,
   });
 
   // Smart notifications
@@ -160,15 +178,36 @@ const StaffHome = () => {
 
   // GPS watch
   useEffect(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) { setGpsDenied(true); return; }
     const id = navigator.geolocation.watchPosition(
       (pos) => {
+        setGpsDenied(false);
         setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
-      }, () => {}, { enableHighAccuracy: true }
+      },
+      (err) => { if (err?.code === err?.PERMISSION_DENIED) setGpsDenied(true); },
+      { enableHighAccuracy: true }
     );
     return () => navigator.geolocation.clearWatch(id);
   }, [activeBranch]);
+
+  // Auto-suggest closest branch within 200m for Area Managers / Freelancers
+  useEffect(() => {
+    if (!userPos) return;
+    if (!(isAreaManager || isFreelancer)) return;
+    if (selectedBranchId && autoDetected === false) return; // user picked manually
+    const list = isAreaManager ? allBranches : allBranchesFreelancer;
+    if (!list.length) return;
+    let closest: { id: string; dist: number } | null = null;
+    for (const b of list) {
+      const d = haversineDistance(userPos.lat, userPos.lng, b.latitude, b.longitude);
+      if (!closest || d < closest.dist) closest = { id: b.id, dist: d };
+    }
+    if (closest && closest.dist <= AUTO_SUGGEST_RADIUS && closest.id !== selectedBranchId) {
+      setSelectedBranchId(closest.id);
+      setAutoDetected(true);
+    }
+  }, [userPos, isAreaManager, isFreelancer, allBranches, allBranchesFreelancer]);
 
   // Live timer
   useEffect(() => {
@@ -188,32 +227,78 @@ const StaffHome = () => {
   const checkInMutation = useMutation({
     mutationFn: async () => {
       setGeoError(null); setDeviceError(null);
-      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
-      if (!profile || !checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned.");
+      if (!user) throw new Error("Not signed in. Please log in again.");
+      if (!profile) throw new Error("Your profile is still loading. Please wait a moment and retry.");
 
-      // Device binding check — skip if not required
-      if (profile.is_device_binding_required) {
-        const fingerprint = generateDeviceFingerprint();
-        const currentDeviceId = resolvedDeviceId ?? profile.device_id;
-        if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
-          clearDeviceToken();
-          setDeviceError("This account is locked to another device. Contact Admin.");
-          throw new Error("Device mismatch");
+      const checkBranch = (isAreaManager || isFreelancer) ? activeBranch : branch;
+      if (!checkBranch) throw new Error((isAreaManager || isFreelancer) ? "Select a branch first." : "No branch assigned. Contact Admin.");
+
+      // ---- Block clock-in if on approved leave today (MYT) ----
+      {
+        const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+        const todayMyt = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}`;
+        const { data: leaveToday } = await supabase
+          .from("leave_records")
+          .select("id")
+          .eq("staff_profile_id", profile.id)
+          .eq("status", "approved" as any)
+          .eq("date", todayMyt)
+          .limit(1);
+        if (leaveToday && leaveToday.length > 0) {
+          throw new Error("🚫 You are on approved leave today.");
         }
-        if (!currentDeviceId) {
-          await supabase.from("staff_profiles").update({ device_id: fingerprint }).eq("id", profile.id).eq("user_id", user!.id);
-          setResolvedDeviceId(fingerprint);
+      }
+      // ---- Device binding (with graceful fallback) ----
+      let deviceFlagMissing = false;
+      if (profile.is_device_binding_required) {
+        try {
+          const fingerprint = generateDeviceFingerprint();
+          const currentDeviceId = resolvedDeviceId ?? profile.device_id;
+          if (currentDeviceId && !isSameDevice(currentDeviceId, fingerprint)) {
+            clearDeviceToken();
+            setDeviceError("This account is locked to another device. Contact Admin.");
+            throw new Error("Device mismatch");
+          }
+          if (!currentDeviceId) {
+            // Best-effort bind — don't block check-in if it fails
+            const { error: bindErr } = await supabase
+              .from("staff_profiles")
+              .update({ device_id: fingerprint })
+              .eq("id", profile.id)
+              .eq("user_id", user.id);
+            if (bindErr) {
+              deviceFlagMissing = true;
+            } else {
+              setResolvedDeviceId(fingerprint);
+            }
+          }
+        } catch (e: any) {
+          if (e?.message === "Device mismatch") throw e;
+          // Fingerprint generation failed — flag and continue
+          deviceFlagMissing = true;
         }
       }
 
-      const pos = await getCurrentPosition();
+      // ---- GPS (hard timeout already applied in getCurrentPosition) ----
+      let pos: GeolocationPosition;
+      try {
+        pos = await getCurrentPosition(8000);
+      } catch (gpsErr: any) {
+        setGeoError(gpsErr?.message ?? "GPS Timeout");
+        throw new Error(gpsErr?.message ?? "GPS Timeout");
+      }
+
       const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkBranch.latitude, checkBranch.longitude);
-      if (dist > checkBranch.radius_meters) {
-        setGeoError(`You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`);
+      const allowedRadius = (isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : checkBranch.radius_meters;
+      if (dist > allowedRadius) {
+        const msg = (isFreelancer || isAreaManager)
+          ? `📍 You are not at the ${checkBranch.name} location.`
+          : `You are ${Math.round(dist)}m away. Move closer to ${checkBranch.name}.`;
+        setGeoError(msg);
         throw new Error("Out of range");
       }
 
-      // No late penalty for freelancers, but flag unusual hours
+      // ---- Late calc ----
       let lateMinutes = 0;
       if (!isFreelancer) {
         const now = new Date();
@@ -225,16 +310,62 @@ const StaffHome = () => {
         }
       }
 
+      // ---- Double-entry detection (use MYT day boundary) ----
+      const myt = new Date(Date.now() + 8 * 60 * 60 * 1000);
+      const todayMytIso = `${myt.getUTCFullYear()}-${String(myt.getUTCMonth() + 1).padStart(2, "0")}-${String(myt.getUTCDate()).padStart(2, "0")}T00:00:00+08:00`;
+      const sixtySecAgo = new Date(Date.now() - 60_000).toISOString();
+      const { data: existingToday } = await supabase
+        .from("attendance_logs")
+        .select("id, check_in_time, check_out_time")
+        .eq("user_id", user.id)
+        .gte("check_in_time", todayMytIso)
+        .order("check_in_time", { ascending: false })
+        .limit(5);
+
+      const hasOpenLog = (existingToday ?? []).some((l) => !l.check_out_time);
+      const hasRapidClick = (existingToday ?? []).some((l) => l.check_in_time >= sixtySecAgo);
+      const isDoubleEntry = hasOpenLog || hasRapidClick;
+
+      // ---- Build remarks ----
+      let remarks: string | null = null;
+      if (deviceFlagMissing) remarks = appendRemark(remarks, REMARK.ID_MISSING);
+      if (isDoubleEntry) remarks = appendRemark(remarks, REMARK.DOUBLE_ENTRY);
+      const isFullTime = profile.employment_type === "Monthly-FT" || profile.employment_type === "Hourly-FT";
+      if (isFullTime && lateMinutes > 0) {
+        remarks = appendRemark(remarks, `🚩 ${profile.name} - Forgot again/Attendance Issue`);
+      }
+
+      // ---- Insert ----
       const { error } = await supabase.from("attendance_logs").insert({
-        user_id: user!.id, branch_id: checkBranch.id,
-        check_in_lat: pos.coords.latitude, check_in_long: pos.coords.longitude,
-        status: (lateMinutes > 0 ? "late" : "on_time") as any, late_minutes: lateMinutes,
+        user_id: user.id,
+        branch_id: checkBranch.id,
+        check_in_lat: pos.coords.latitude,
+        check_in_long: pos.coords.longitude,
+        status: (lateMinutes > 0 ? "late" : "on_time") as any,
+        late_minutes: lateMinutes,
+        manager_notes: remarks,
       });
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("duplicate") || msg.includes("unique"))
+          throw new Error("You are already clocked in. Refresh the page.");
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        throw new Error(error.message || "Database error during check-in.");
+      }
+      return { deviceFlagMissing, isDoubleEntry };
     },
-    onSuccess: () => {
+    onSuccess: ({ deviceFlagMissing, isDoubleEntry }) => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
-      toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      const parts: string[] = [];
+      if (deviceFlagMissing) parts.push("flagged 'ID Missing'");
+      if (isDoubleEntry) parts.push("flagged as possible double entry");
+      toast({
+        title: "Checked In!",
+        description: parts.length
+          ? `Recorded — ${parts.join(" & ")}. Admin will review.`
+          : "Your attendance has been recorded.",
+      });
     },
     onError: (err: Error) => {
       if (err.message !== "Device mismatch" && err.message !== "Out of range")
@@ -244,8 +375,21 @@ const StaffHome = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      if (!activeLog) throw new Error("No active check-in found.");
-      const checkIn = new Date(activeLog.check_in_time);
+      if (!user) throw new Error("Not signed in. Please log in again.");
+
+      // Fetch the latest open log live — never trust stale React Query cache for checkout.
+      const { data: openLogs, error: fetchErr } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
+      if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
+      const openLog = openLogs?.[0];
+      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+
+      const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
       const restHours = Math.floor(totalHours / 5);
@@ -259,8 +403,15 @@ const StaffHome = () => {
         net_hours: Math.round(netHours * 100) / 100,
         regular_hours: Math.round(regularHours * 100) / 100,
         ot_hours: Math.round(otHours * 100) / 100,
-      }).eq("id", activeLog.id);
-      if (error) throw error;
+      }).eq("id", openLog.id);
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        if (msg.includes("permission") || msg.includes("policy") || msg.includes("rls"))
+          throw new Error("Permission denied — please log out and log back in.");
+        throw new Error(error.message);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
@@ -270,11 +421,33 @@ const StaffHome = () => {
     onError: (err: Error) => toast({ title: "Check-out failed", description: err.message, variant: "destructive" }),
   });
 
-  if (isLoading || !profile) {
-    return <div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" /></div>;
+  // Show the page shell while profile loads — never block the UI behind a full-screen spinner.
+  // Background queries (payslip, OT) load progressively.
+  if (isLoading && !profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-primary" />
+          <p className="text-sm text-muted-foreground">Loading your profile…</p>
+        </div>
+      </div>
+    );
+  }
+  if (!profile) {
+    return (
+      <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
+        <Alert variant="destructive">
+          <AlertDescription>
+            We couldn't load your staff profile. Please check your connection and refresh, or contact Admin.
+          </AlertDescription>
+        </Alert>
+        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+      </div>
+    );
   }
 
-  const inRange = distance !== null && activeBranch ? distance <= activeBranch.radius_meters : null;
+  const effectiveRadius = activeBranch ? ((isFreelancer || isAreaManager) ? AUTO_SUGGEST_RADIUS : activeBranch.radius_meters) : null;
+  const inRange = distance !== null && effectiveRadius !== null ? distance <= effectiveRadius : null;
 
   return (
     <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
@@ -289,9 +462,12 @@ const StaffHome = () => {
             {isFreelancer && <Badge variant="secondary" className="text-[10px]">Freelancer</Badge>}
           </div>
         </div>
-        <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
-          <LogOut className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <ThemeToggle />
+          <Button variant="ghost" size="icon" onClick={signOut} className="text-muted-foreground">
+            <LogOut className="h-5 w-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Missed Clock-Out Warning */}
@@ -304,11 +480,21 @@ const StaffHome = () => {
       )}
 
       {/* Area Manager / Freelancer Branch Selector */}
-      {(isAreaManager || (isFreelancer && !profile?.branch_id)) && !activeLog && (
+      {(isAreaManager || isFreelancer) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
-            <p className="text-sm font-medium">Select Branch to Check In</p>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
+              </p>
+              {autoDetected && selectedBranchId && (
+                <Badge variant="secondary" className="text-[10px]">📍 Location Detected</Badge>
+              )}
+            </div>
+            <Select
+              value={selectedBranchId}
+              onValueChange={(v) => { setSelectedBranchId(v); setAutoDetected(false); }}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Choose any branch..." />
               </SelectTrigger>
@@ -318,6 +504,9 @@ const StaffHome = () => {
                 ))}
               </SelectContent>
             </Select>
+            {gpsDenied && (
+              <p className="text-xs text-muted-foreground">Please enable location for faster check-in.</p>
+            )}
           </CardContent>
         </Card>
       )}
@@ -364,8 +553,8 @@ const StaffHome = () => {
           <div className="grid grid-cols-2 gap-3">
             <Button
               size="lg"
-              className="h-14 text-base bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md"
-              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || (isFreelancer && !profile?.branch_id)) && !selectedBranchId)}
+              className="btn-tech-green h-14 text-base rounded-xl shadow-md"
+              disabled={!!activeLog || checkInMutation.isPending || ((isAreaManager || isFreelancer) && !selectedBranchId) || ((isAreaManager || isFreelancer) && inRange === false)}
               onClick={() => checkInMutation.mutate()}
             >
               <LogIn className="h-5 w-5 mr-2" />
@@ -373,8 +562,11 @@ const StaffHome = () => {
             </Button>
             <Button
               size="lg"
-              className="h-14 text-base bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-md"
-              disabled={!activeLog || checkOutMutation.isPending}
+              variant="destructive"
+              className="h-14 text-base rounded-xl shadow-md"
+              // Always allow tapping unless mutation is in-flight. The mutation
+              // re-fetches the open log live, so a stale cache cannot block checkout.
+              disabled={checkOutMutation.isPending}
               onClick={() => checkOutMutation.mutate()}
             >
               <LogOut className="h-5 w-5 mr-2" />

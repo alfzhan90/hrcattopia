@@ -4,8 +4,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ============================================================
+   Enterprise Indigo Theme — Light & Dark
+   Light:  bg #F1F5F9  card #FFFFFF  border #E2E8F0
+   Dark:   bg #020617  card #0F172A  border #1E293B
+   ============================================================ */
+
 @layer base {
   :root {
+    /* Surfaces */
     --background: 220 14% 96%;
     --foreground: 222 47% 11%;
 
@@ -15,6 +22,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222 47% 11%;
 
+    /* Brand — Indigo primary */
     --primary: 243 75% 59%;
     --primary-foreground: 0 0% 100%;
 
@@ -30,66 +38,105 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 89%;
-    --input: 220 13% 89%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 0 0% 100%;
+
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
     --ring: 243 75% 59%;
 
     --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 7%;
-    --sidebar-foreground: 0 0% 92%;
+    /* Sidebar — dark slate */
+    --sidebar-background: 222 47% 11%;
+    --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 243 75% 62%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 13%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 16%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 22%;
     --sidebar-ring: 243 75% 62%;
 
+    /* Brand tokens — repurposed to indigo */
     --gold: 243 75% 59%;
     --gold-foreground: 0 0% 100%;
     --gold-muted: 243 60% 82%;
-    --carbon: 0 0% 7%;
-    --carbon-light: 0 0% 13%;
-    --platinum: 220 13% 89%;
+    --carbon: 222 47% 11%;
+    --carbon-light: 217 33% 17%;
+    --platinum: 214 32% 91%;
+
+    /* Tech accent — emerald */
+    --tech-green: 160 84% 39%;
+    --tech-green-foreground: 0 0% 100%;
+
+    /* Glassmorphism */
+    --glass-bg: 0 0% 100%;
+    --glass-bg-alpha: 0.70;
+    --glass-border: 214 32% 91%;
+    --glass-border-alpha: 0.60;
   }
 
   .dark {
-    --background: 222 47% 7%;
-    --foreground: 215 20% 90%;
+    --background: 222 47% 5%;
+    --foreground: 210 40% 98%;
 
-    --card: 222 47% 10%;
-    --card-foreground: 215 20% 90%;
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
 
-    --popover: 222 47% 10%;
-    --popover-foreground: 215 20% 90%;
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
 
     --primary: 234 89% 74%;
-    --primary-foreground: 222 47% 7%;
+    --primary-foreground: 222 47% 5%;
 
-    --secondary: 217 33% 14%;
-    --secondary-foreground: 215 20% 90%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
 
-    --muted: 217 33% 14%;
-    --muted-foreground: 215 20% 60%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217 33% 14%;
-    --accent-foreground: 215 20% 90%;
+    --accent: 217 33% 17%;
+    --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 63% 31%;
-    --destructive-foreground: 0 0% 95%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 40% 98%;
 
-    --border: 217 33% 18%;
-    --input: 217 33% 18%;
+    --warning: 25 95% 53%;
+    --warning-foreground: 222 47% 5%;
+
+    --info: 217 91% 60%;
+    --info-foreground: 222 47% 5%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
     --ring: 234 89% 74%;
 
-    --sidebar-background: 0 0% 5%;
-    --sidebar-foreground: 0 0% 92%;
+    --sidebar-background: 222 47% 5%;
+    --sidebar-foreground: 210 40% 98%;
     --sidebar-primary: 234 89% 74%;
-    --sidebar-primary-foreground: 222 47% 7%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 0 0% 15%;
+    --sidebar-primary-foreground: 222 47% 5%;
+    --sidebar-accent: 222 47% 11%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
     --sidebar-ring: 234 89% 74%;
+
+    --gold: 234 89% 74%;
+    --gold-foreground: 222 47% 5%;
+    --gold-muted: 234 60% 60%;
+    --carbon: 222 47% 5%;
+    --carbon-light: 217 33% 17%;
+    --platinum: 217 33% 17%;
+
+    --tech-green: 160 84% 45%;
+    --tech-green-foreground: 222 47% 5%;
+
+    --glass-bg: 222 47% 11%;
+    --glass-bg-alpha: 0.55;
+    --glass-border: 217 33% 30%;
+    --glass-border-alpha: 0.40;
   }
 }
 
@@ -98,9 +145,18 @@
     @apply border-border;
   }
 
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-text-size-adjust: 100%;
   }
 
   h1, h2, h3, h4, h5, h6 {
@@ -137,9 +193,83 @@
     color: hsl(var(--primary-foreground));
   }
 
-  .admin-bottom-dock {
-    @apply fixed bottom-0 left-0 right-0 z-50 border-t backdrop-blur md:hidden;
-    background: hsl(var(--carbon) / 0.97);
-    border-color: hsl(var(--carbon-light));
+  /* ---------- Glassmorphism ---------- */
+  .glass-surface {
+    background: hsl(var(--glass-bg) / var(--glass-bg-alpha));
+    border: 1px solid hsl(var(--glass-border) / var(--glass-border-alpha));
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    backdrop-filter: blur(14px) saturate(160%);
   }
+
+  .glass-nav {
+    background: hsl(var(--glass-bg) / var(--glass-bg-alpha));
+    border-top: 1px solid hsl(var(--glass-border) / var(--glass-border-alpha));
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    backdrop-filter: blur(18px) saturate(160%);
+  }
+
+  .admin-bottom-dock {
+    @apply fixed bottom-0 left-0 right-0 z-50 md:hidden glass-nav;
+  }
+
+  /* ---------- Tech Green Clock-In ---------- */
+  .btn-tech-green {
+    background: hsl(var(--tech-green));
+    color: hsl(var(--tech-green-foreground));
+    transition: box-shadow 0.2s ease, transform 0.1s ease, background 0.2s ease;
+  }
+  .btn-tech-green:hover:not(:disabled) {
+    background: hsl(var(--tech-green) / 0.92);
+  }
+  .dark .btn-tech-green {
+    box-shadow:
+      0 0 0 1px hsl(var(--tech-green) / 0.3),
+      0 0 20px hsl(var(--tech-green) / 0.35),
+      0 4px 14px hsl(var(--tech-green) / 0.25);
+  }
+  .dark .btn-tech-green:hover:not(:disabled) {
+    box-shadow:
+      0 0 0 1px hsl(var(--tech-green) / 0.5),
+      0 0 28px hsl(var(--tech-green) / 0.55),
+      0 4px 18px hsl(var(--tech-green) / 0.4);
+  }
+
+  /* ---------- Urgent (Red Alert) Glow ---------- */
+  .urgent-glow {
+    border: 1px solid hsl(var(--destructive) / 0.6);
+    background: hsl(var(--destructive) / 0.06);
+  }
+  .dark .urgent-glow {
+    border-color: hsl(var(--destructive) / 0.7);
+    box-shadow:
+      0 0 0 1px hsl(var(--destructive) / 0.4),
+      0 0 18px hsl(var(--destructive) / 0.45),
+      inset 0 0 12px hsl(var(--destructive) / 0.08);
+    animation: urgent-pulse 2.4s ease-in-out infinite;
+  }
+
+  @keyframes urgent-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 0 1px hsl(var(--destructive) / 0.4),
+        0 0 14px hsl(var(--destructive) / 0.35),
+        inset 0 0 10px hsl(var(--destructive) / 0.06);
+    }
+    50% {
+      box-shadow:
+        0 0 0 1px hsl(var(--destructive) / 0.6),
+        0 0 26px hsl(var(--destructive) / 0.6),
+        inset 0 0 14px hsl(var(--destructive) / 0.1);
+    }
+  }
+}
+
+/* Mobile bottom-nav stability — prevent Chrome/Safari layout shift */
+@supports (-webkit-touch-callout: none) {
+  .safe-area-pb {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }

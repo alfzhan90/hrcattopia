@@ -7,10 +7,22 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
+import { useAuth } from "@/contexts/AuthContext";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs">;
@@ -20,14 +32,22 @@ type Branch = Tables<"branches">;
 const AttendanceRecords = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { role } = useAuth();
+  const isAdmin = role === "admin";
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [flagFilter, setFlagFilter] = useState<
+    "all" | "any" | "double_entry" | "auto_checkout" | "full_time_issue" | "historical_missing" | "historical_double" | "frequent_issue"
+  >("all");
   const [dateFrom, setDateFrom] = useState(format(subDays(new Date(), 30), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(format(new Date(), "yyyy-MM-dd"));
 
   // Edit dialog state
   const [editOpen, setEditOpen] = useState(false);
   const [editLog, setEditLog] = useState<any>(null);
+
+  // Delete confirmation state
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editCheckIn, setEditCheckIn] = useState("");
   const [editCheckOut, setEditCheckOut] = useState("");
 
@@ -80,12 +100,73 @@ const AttendanceRecords = () => {
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b]));
 
   const filteredLogs = logs.filter((log) => {
-    if (!searchTerm) return true;
-    const s = staffMap[log.user_id];
-    if (!s) return false;
-    const term = searchTerm.toLowerCase();
-    return s.name.toLowerCase().includes(term) || s.staff_id.toLowerCase().includes(term);
+    if (searchTerm) {
+      const s = staffMap[log.user_id];
+      if (!s) return false;
+      const term = searchTerm.toLowerCase();
+      if (!s.name.toLowerCase().includes(term) && !s.staff_id.toLowerCase().includes(term)) return false;
+    }
+    if (flagFilter !== "all") {
+      const kinds = classifyRemark(log.manager_notes);
+      const hasFlag = kinds.length > 0 && !(kinds.length === 1 && kinds[0] === "manual");
+      if (flagFilter === "any") {
+        if (!hasFlag) return false;
+      } else if (!kinds.includes(flagFilter as RemarkKind)) {
+        return false;
+      }
+    }
+    return true;
   });
+
+  const flagBadges = (notes: string | null) => {
+    const kinds = classifyRemark(notes);
+    if (kinds.length === 0) return <span className="text-muted-foreground text-xs">—</span>;
+    return (
+      <div className="flex flex-wrap gap-1 max-w-[260px]">
+        {kinds.map((k) => {
+          if (k === "double_entry")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <AlertTriangle className="h-3 w-3" /> Double Entry
+              </Badge>
+            );
+          if (k === "auto_checkout")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-info/15 text-info border-info/30">
+                <Bot className="h-3 w-3" /> Auto-Checkout
+              </Badge>
+            );
+          if (k === "full_time_issue")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <Flag className="h-3 w-3" /> FT Issue
+              </Badge>
+            );
+          if (k === "historical_missing")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Missing Logout
+              </Badge>
+            );
+          if (k === "historical_double")
+            return (
+              <Badge key={k} variant="secondary" className="text-[10px] gap-1 bg-warning/15 text-warning border-warning/30">
+                <History className="h-3 w-3" /> Hist: Double Entry
+              </Badge>
+            );
+          if (k === "frequent_issue")
+            return (
+              <Badge key={k} variant="destructive" className="text-[10px] gap-1">
+                <Flag className="h-3 w-3" /> Frequent Issue
+              </Badge>
+            );
+          if (k === "id_missing")
+            return <Badge key={k} variant="outline" className="text-[10px]">ID Missing</Badge>;
+          return <Badge key={k} variant="outline" className="text-[10px]">Note</Badge>;
+        })}
+      </div>
+    );
+  };
 
   const openEdit = (log: AttendanceLog) => {
     setEditLog(log);
@@ -129,6 +210,21 @@ const AttendanceRecords = () => {
     },
     onError: (err: Error) => {
       toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("attendance_logs").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
+      setDeleteId(null);
+      toast({ title: "Deleted", description: "Attendance record permanently removed." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Delete failed", description: err.message, variant: "destructive" });
     },
   });
 
@@ -207,6 +303,24 @@ const AttendanceRecords = () => {
           <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-[160px]" />
         </div>
         <div className="space-y-1">
+          <Label className="text-xs">Flags</Label>
+          <Select value={flagFilter} onValueChange={(v: any) => setFlagFilter(v)}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Records</SelectItem>
+              <SelectItem value="any">Any Flag</SelectItem>
+              <SelectItem value="double_entry">Errors (Double Entry)</SelectItem>
+              <SelectItem value="auto_checkout">Auto-Logs</SelectItem>
+              <SelectItem value="full_time_issue">Full-Time Issues</SelectItem>
+              <SelectItem value="historical_missing">Historical: Missing Logout</SelectItem>
+              <SelectItem value="historical_double">Historical: Double Entry</SelectItem>
+              <SelectItem value="frequent_issue">Frequent Issue</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label className="text-xs">Search</Label>
           <div className="relative">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -234,17 +348,18 @@ const AttendanceRecords = () => {
               <TableHead>Net Hrs</TableHead>
               <TableHead>OT Hrs</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead className="w-[60px]"></TableHead>
+              <TableHead>Issues / Flags</TableHead>
+              <TableHead className="w-[110px] text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">Loading...</TableCell>
               </TableRow>
             ) : filteredLogs.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
+                <TableCell colSpan={11} className="text-center py-8 text-muted-foreground">No records found.</TableCell>
               </TableRow>
             ) : (
               filteredLogs.map((log) => {
@@ -271,10 +386,24 @@ const AttendanceRecords = () => {
                         <Badge variant="secondary" className="text-xs">On Time</Badge>
                       )}
                     </TableCell>
-                    <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => openEdit(log)}>
-                        <Pencil className="h-4 w-4" />
-                      </Button>
+                    <TableCell>{flagBadges(log.manager_notes)}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => openEdit(log)} aria-label="Edit log">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setDeleteId(log.id)}
+                            aria-label="Delete log"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 );
@@ -357,6 +486,31 @@ const AttendanceRecords = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete attendance record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to permanently delete this attendance record? This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleteId) deleteMutation.mutate(deleteId);
+              }}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

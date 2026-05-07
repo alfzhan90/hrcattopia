@@ -57,21 +57,24 @@ const Attendance = () => {
     enabled: !!profile?.branch_id,
   });
 
+  // Find the most recent OPEN attendance log (no check_out_time) for this user.
+  // Avoid filtering by UTC date — staff in MYT (UTC+8) checking in before 08:00 MYT
+  // would have their log skipped after the UTC date rolls over, breaking Clock Out.
   const { data: activeLog } = useQuery({
     queryKey: ["active-attendance", user?.id],
     queryFn: async () => {
-      const today = new Date().toISOString().split("T")[0];
       const { data, error } = await supabase
         .from("attendance_logs")
         .select("*")
         .eq("user_id", user!.id)
-        .gte("check_in_time", today)
         .is("check_out_time", null)
-        .maybeSingle();
+        .order("check_in_time", { ascending: false })
+        .limit(1);
       if (error) throw error;
-      return data;
+      return data?.[0] ?? null;
     },
     enabled: !!user,
+    refetchOnWindowFocus: true,
   });
 
   useEffect(() => {
@@ -194,6 +197,28 @@ const Attendance = () => {
 
       const finalStatus = lateMinutes > 0 ? "late" : status;
 
+      // Schedule matching: look for a planned shift today at this branch
+      // within a 30-minute buffer of the start time.
+      const todayStr = now.toISOString().split("T")[0];
+      const { data: todaySchedules } = await supabase
+        .from("schedules")
+        .select("start_time, end_time")
+        .eq("staff_profile_id", profile.id)
+        .eq("branch_id", branch.id)
+        .eq("date", todayStr);
+
+      const BUFFER_MS = 30 * 60 * 1000;
+      const nowMs = now.getTime();
+      const matchedShift = (todaySchedules ?? []).some((s) => {
+        const [sh, sm] = (s.start_time as string).split(":").map(Number);
+        const shiftStart = new Date(now);
+        shiftStart.setHours(sh, sm ?? 0, 0, 0);
+        return Math.abs(nowMs - shiftStart.getTime()) <= BUFFER_MS;
+      });
+
+      const paymentStatus: "automatic" | "pending_approval" =
+        matchedShift ? "automatic" : "pending_approval";
+
       const { data: insertedRow, error } = await supabase.from("attendance_logs").insert({
         user_id: user!.id,
         branch_id: branch.id,
@@ -201,7 +226,8 @@ const Attendance = () => {
         check_in_long: pos.coords.longitude,
         status: finalStatus as any,
         late_minutes: lateMinutes,
-      }).select().single();
+        payment_status: paymentStatus,
+      } as any).select().single();
       if (error) throw error;
 
       // Fire Telegram notification via edge function
@@ -212,11 +238,20 @@ const Attendance = () => {
         console.log("[notify-attendance] Check-in response:", res);
         if (res.error) console.error("[notify-attendance] Check-in error:", res.error);
       }).catch((err) => console.error("[notify-attendance] Check-in exception:", err));
+
+      return { paymentStatus };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
       queryClient.invalidateQueries({ queryKey: ["my-profile", user?.id] });
-      toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      if (result?.paymentStatus === "pending_approval") {
+        toast({
+          title: "Emergency check-in detected",
+          description: "This shift requires manager approval for pay calculation.",
+        });
+      } else {
+        toast({ title: "Checked In!", description: "Your attendance has been recorded." });
+      }
     },
     onError: (err: Error) => {
       if (err.message !== "Device mismatch" && err.message !== "Out of range") {
@@ -227,40 +262,50 @@ const Attendance = () => {
 
   const checkOutMutation = useMutation({
     mutationFn: async () => {
-      if (!activeLog) throw new Error("No active check-in found.");
+      if (!user) throw new Error("Not signed in. Please log in again.");
 
-      const checkIn = new Date(activeLog.check_in_time);
+      // Fetch the latest open log live — never trust stale React Query cache for checkout.
+      const { data: openLogs, error: fetchErr } = await supabase
+        .from("attendance_logs")
+        .select("*")
+        .eq("user_id", user.id)
+        .is("check_out_time", null)
+        .order("check_in_time", { ascending: false })
+        .limit(1);
+      if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
+      const openLog = openLogs?.[0];
+      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+
+      const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
-      
+
       // Malaysian Employment Act: 1 hour rest if >= 5 hours worked
       const restHours = calcRestHours(totalHours);
       const netHours = calcNetHours(totalHours);
       const regularHours = Math.min(netHours, 8);
       const otHours = calcDailyOt(netHours);
 
-      const updatedRecord = {
-        ...activeLog,
-        check_out_time: now.toISOString(),
-        rest_hours: Math.round(restHours * 100) / 100,
-        net_hours: Math.round(netHours * 100) / 100,
-        regular_hours: Math.round(regularHours * 100) / 100,
-        ot_hours: Math.round(otHours * 100) / 100,
-      };
-
       const { data: updatedRow, error } = await supabase
         .from("attendance_logs")
         .update({
-          check_out_time: updatedRecord.check_out_time,
-          rest_hours: updatedRecord.rest_hours,
-          net_hours: updatedRecord.net_hours,
-          regular_hours: updatedRecord.regular_hours,
-          ot_hours: updatedRecord.ot_hours,
+          check_out_time: now.toISOString(),
+          rest_hours: Math.round(restHours * 100) / 100,
+          net_hours: Math.round(netHours * 100) / 100,
+          regular_hours: Math.round(regularHours * 100) / 100,
+          ot_hours: Math.round(otHours * 100) / 100,
         })
-        .eq("id", activeLog.id)
+        .eq("id", openLog.id)
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes("timeout") || msg.includes("network"))
+          throw new Error("Database busy — please try again in a few seconds.");
+        if (msg.includes("permission") || msg.includes("policy") || msg.includes("rls"))
+          throw new Error("Permission denied — please log out and log back in.");
+        throw new Error(error.message);
+      }
 
       // Fire Telegram notification for check-out
       console.log("[notify-attendance] Calling edge function with record:", updatedRow?.id);
@@ -406,7 +451,7 @@ const Attendance = () => {
           size="lg"
           variant="outline"
           className="h-20 text-lg"
-          disabled={!activeLog || checkOutMutation.isPending}
+          disabled={checkOutMutation.isPending}
           onClick={() => checkOutMutation.mutate()}
         >
           <LogOut className="h-6 w-6 mr-2" />

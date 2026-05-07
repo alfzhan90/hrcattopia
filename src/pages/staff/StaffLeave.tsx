@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -49,6 +49,20 @@ const StaffLeave = () => {
     enabled: !!profile,
   });
 
+  // Realtime updates so staff sees Approved/Rejected instantly
+  useEffect(() => {
+    if (!profile?.id) return;
+    const ch = supabase
+      .channel(`leave-${profile.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "leave_records", filter: `staff_profile_id=eq.${profile.id}` },
+        () => qc.invalidateQueries({ queryKey: ["my-leave-requests", profile.id] }),
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [profile?.id, qc]);
+
   const { data: holidays = [] } = useQuery({
     queryKey: ["public-holidays"],
     queryFn: async () => {
@@ -60,6 +74,24 @@ const StaffLeave = () => {
   const submitMutation = useMutation({
     mutationFn: async () => {
       if (!profile) throw new Error("Profile not found");
+      if (!form.start_date) throw new Error("Pick a start date");
+
+      // 3-day notice for AL
+      if (form.leave_type === "AL") {
+        const start = new Date(form.start_date + "T00:00:00");
+        const minStart = new Date();
+        minStart.setHours(0, 0, 0, 0);
+        minStart.setDate(minStart.getDate() + 3);
+        if (start < minStart) {
+          throw new Error("⚠️ AL must be applied 3 days in advance. Use EL for emergencies.");
+        }
+      }
+
+      // MC requires a file
+      if (form.leave_type === "MC" && !mcFile) {
+        throw new Error("Please upload your MC document.");
+      }
+
       let mcFileUrl: string | null = null;
       if (mcFile && form.leave_type === "MC") {
         const ext = mcFile.name.split(".").pop();
@@ -80,6 +112,17 @@ const StaffLeave = () => {
       }
       const { error } = await supabase.from("leave_records").insert(records);
       if (error) throw error;
+
+      // Notify admin via Telegram (fire-and-forget)
+      supabase.functions.invoke("notify-leave-request", {
+        body: {
+          staff_name: profile.name,
+          leave_type: form.leave_type,
+          start_date: form.start_date,
+          end_date: form.end_date || form.start_date,
+          reason: form.reason || null,
+        },
+      }).catch((e) => console.warn("notify-leave-request failed", e));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["my-leave-requests"] });
@@ -164,13 +207,24 @@ const StaffLeave = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Start</Label>
-                <Input type="date" className="h-12 rounded-xl" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} />
+                <Input
+                  type="date"
+                  className="h-12 rounded-xl"
+                  value={form.start_date}
+                  min={form.leave_type === "AL"
+                    ? new Date(Date.now() + 3 * 86400000).toISOString().split("T")[0]
+                    : undefined}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <Label>End</Label>
                 <Input type="date" className="h-12 rounded-xl" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} />
               </div>
             </div>
+            {form.leave_type === "AL" && (
+              <p className="text-xs text-muted-foreground">⚠️ AL must be applied at least 3 days in advance. Use EL for emergencies.</p>
+            )}
             <div className="space-y-2">
               <Label>Reason</Label>
               <Textarea placeholder="Reason..." className="rounded-xl min-h-[80px]" value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} />

@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      area_manager_branches: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "area_manager_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_logs: {
         Row: {
           branch_id: string
@@ -25,8 +54,10 @@ export type Database = {
           id: string
           late_minutes: number
           late_waived: boolean
+          manager_notes: string | null
           net_hours: number
           ot_hours: number
+          payment_status: Database["public"]["Enums"]["payment_status"]
           regular_hours: number
           rest_hours: number
           status: Database["public"]["Enums"]["attendance_status"]
@@ -42,8 +73,10 @@ export type Database = {
           id?: string
           late_minutes?: number
           late_waived?: boolean
+          manager_notes?: string | null
           net_hours?: number
           ot_hours?: number
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
           rest_hours?: number
           status?: Database["public"]["Enums"]["attendance_status"]
@@ -59,8 +92,10 @@ export type Database = {
           id?: string
           late_minutes?: number
           late_waived?: boolean
+          manager_notes?: string | null
           net_hours?: number
           ot_hours?: number
+          payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
           rest_hours?: number
           status?: Database["public"]["Enums"]["attendance_status"]
@@ -468,6 +503,60 @@ export type Database = {
           },
         ]
       }
+      schedules: {
+        Row: {
+          branch_id: string
+          created_at: string
+          created_by: string
+          date: string
+          end_time: string
+          id: string
+          notes: string | null
+          staff_profile_id: string
+          start_time: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          created_by: string
+          date: string
+          end_time: string
+          id?: string
+          notes?: string | null
+          staff_profile_id: string
+          start_time: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          created_by?: string
+          date?: string
+          end_time?: string
+          id?: string
+          notes?: string | null
+          staff_profile_id?: string
+          start_time?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "schedules_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "schedules_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_profiles: {
         Row: {
           access_revoke_date: string | null
@@ -605,9 +694,21 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_area_manager_for_attendance_user: {
+        Args: { _attendance_user_id: string; _manager_id: string }
+        Returns: boolean
+      }
+      is_area_manager_for_branch: {
+        Args: { _branch_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_area_manager_for_staff: {
+        Args: { _staff_profile_id: string; _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "staff"
+      app_role: "admin" | "staff" | "area_manager"
       attendance_status: "on_time" | "late" | "out_of_range"
       employment_type:
         | "Monthly-FT"
@@ -617,6 +718,7 @@ export type Database = {
       invoice_status: "draft" | "issued" | "paid"
       leave_status: "pending" | "approved" | "rejected"
       leave_type: "AL" | "MC" | "UPL" | "EL"
+      payment_status: "automatic" | "pending_approval" | "approved" | "rejected"
       payroll_status: "draft" | "released"
     }
     CompositeTypes: {
@@ -745,7 +847,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff"],
+      app_role: ["admin", "staff", "area_manager"],
       attendance_status: ["on_time", "late", "out_of_range"],
       employment_type: [
         "Monthly-FT",
@@ -756,6 +858,7 @@ export const Constants = {
       invoice_status: ["draft", "issued", "paid"],
       leave_status: ["pending", "approved", "rejected"],
       leave_type: ["AL", "MC", "UPL", "EL"],
+      payment_status: ["automatic", "pending_approval", "approved", "rejected"],
       payroll_status: ["draft", "released"],
     },
   },
