@@ -483,12 +483,20 @@ const StaffHome = () => {
       {(isAreaManager || isFreelancer) && !activeLog && (
         <Card className="rounded-xl">
           <CardContent className="p-4 space-y-2">
-            <p className="text-sm font-medium">
-              {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
-            </p>
-            <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-medium">
+                {isFreelancer ? "Which branch are you working at today?" : "Select Branch to Check In"}
+              </p>
+              {autoDetected && selectedBranchId && (
+                <Badge variant="secondary" className="text-[10px]">📍 Location Detected</Badge>
+              )}
+            </div>
+            <Select
+              value={selectedBranchId}
+              onValueChange={(v) => { setSelectedBranchId(v); setAutoDetected(false); }}
+            >
               <SelectTrigger>
-                <SelectValue placeholder="Choose a branch..." />
+                <SelectValue placeholder="Choose any branch..." />
               </SelectTrigger>
               <SelectContent>
                 {(isAreaManager ? allBranches : allBranchesFreelancer).map((b) => (
@@ -496,6 +504,9 @@ const StaffHome = () => {
                 ))}
               </SelectContent>
             </Select>
+            {gpsDenied && (
+              <p className="text-xs text-muted-foreground">Please enable location for faster check-in.</p>
+            )}
           </CardContent>
         </Card>
       )}
