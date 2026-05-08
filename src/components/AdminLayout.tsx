@@ -57,26 +57,26 @@ const AdminLayout = () => {
   const dockItems = role === "area_manager" ? areaManagerDockItems : adminDockItems;
 
   const linkClass = ({ isActive }: { isActive: boolean }) =>
-    `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+    `flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors duration-150 ${
       isActive
-        ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-        : "text-sidebar-foreground/60 hover:bg-white/5 hover:text-sidebar-foreground"
+        ? "bg-white/[0.09] text-white font-medium ring-1 ring-white/[0.08] ring-inset"
+        : "font-normal text-sidebar-foreground/55 hover:bg-white/[0.05] hover:text-sidebar-foreground/90"
     }`;
 
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background pb-20">
         {/* Mobile header */}
-        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-carbon px-4 h-14">
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-carbon px-4 h-12">
           <div className="flex items-center gap-2 min-w-0">
             {companySettings?.logo_url ? (
-              <img src={companySettings.logo_url} alt="Logo" className="h-7 w-7 object-contain rounded" />
+              <img src={companySettings.logo_url} alt="Logo" className="h-6 w-6 object-contain rounded" />
             ) : (
-              <div className="gold-avatar h-7 w-7 text-xs">
+              <div className="gold-avatar h-6 w-6 text-[10px]">
                 {(companySettings?.company_name || "HR")[0]}
               </div>
             )}
-            <span className="text-sm font-bold text-sidebar-foreground truncate">
+            <span className="text-[13px] font-semibold text-sidebar-foreground truncate">
               {companySettings?.company_name || "HR & Payroll"}
             </span>
           </div>
@@ -95,7 +95,7 @@ const AdminLayout = () => {
 
         {/* Mobile slide-down menu */}
         {mobileMenuOpen && (
-          <div className="fixed inset-x-0 top-14 z-30 bg-carbon border-b border-carbon-light p-4 space-y-1 animate-in slide-in-from-top-2">
+          <div className="fixed inset-x-0 top-12 z-30 bg-sidebar border-b border-sidebar-border px-3 py-3 space-y-0.5 animate-in slide-in-from-top-2">
             {navItems.map(({ to, icon: Icon, label }) => (
               <NavLink
                 key={to}
@@ -162,54 +162,68 @@ const AdminLayout = () => {
   return (
     <div className="flex min-h-screen">
       {/* Desktop Sidebar */}
-      <aside className="w-64 border-r border-sidebar-border bg-sidebar flex flex-col">
-        <div className="p-6 border-b border-sidebar-border">
-          <div className="flex items-center gap-3">
+      <aside className="w-[220px] shrink-0 border-r border-sidebar-border bg-sidebar flex flex-col">
+        {/* Brand */}
+        <div className="px-5 py-5 border-b border-sidebar-border/60">
+          <div className="flex items-center gap-2.5">
             {companySettings?.logo_url ? (
-              <img src={companySettings.logo_url} alt="Logo" className="h-8 w-8 object-contain rounded" />
+              <img src={companySettings.logo_url} alt="Logo" className="h-7 w-7 object-contain rounded" />
             ) : (
-              <div className="gold-avatar h-8 w-8 text-sm">
+              <div className="gold-avatar h-7 w-7 text-xs shrink-0">
                 {(companySettings?.company_name || "HR")[0]}
               </div>
             )}
             <div className="min-w-0">
-              <h1 className="text-base font-bold text-sidebar-foreground truncate">
+              <p className="text-[13px] font-semibold text-sidebar-foreground leading-tight truncate">
                 {companySettings?.company_name || "HR & Payroll"}
-              </h1>
-              <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email}</p>
+              </p>
+              <p className="text-[10px] text-sidebar-foreground/40 uppercase tracking-[0.08em] mt-0.5">HR Platform</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 p-4 space-y-1">
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
           {navItems.map(({ to, icon: Icon, label }) => (
             <NavLink key={to} to={to} className={linkClass}>
-              <Icon className="h-4 w-4" />
+              <Icon className="h-[15px] w-[15px] shrink-0" />
               {label}
             </NavLink>
           ))}
         </nav>
-        <div className="p-4 border-t border-sidebar-border space-y-1">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs text-sidebar-foreground/50">Theme</span>
-            <ThemeToggle className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent" />
+
+        {/* Footer */}
+        <div className="px-3 py-3 border-t border-sidebar-border/60 space-y-0.5">
+          <div className="flex items-center gap-2 px-3 py-2 mb-1">
+            <div className="h-6 w-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+              <span className="text-[10px] font-bold text-primary">
+                {user?.email?.[0]?.toUpperCase() ?? 'A'}
+              </span>
+            </div>
+            <p className="text-xs text-sidebar-foreground/50 truncate">{user?.email?.split('@')[0]}</p>
+            <ThemeToggle className="ml-auto text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent shrink-0 h-6 w-6" />
           </div>
-          <Button variant="ghost" className="w-full justify-start gap-3 text-sidebar-foreground/70 hover:text-sidebar-foreground" onClick={signOut}>
-            <LogOut className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2.5 text-sidebar-foreground/55 hover:text-sidebar-foreground hover:bg-white/[0.05] h-8 text-xs px-3"
+            onClick={signOut}
+          >
+            <LogOut className="h-3.5 w-3.5" />
             Sign Out
           </Button>
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-end gap-3 border-b bg-background/95 backdrop-blur px-6">
-          <ThemeToggle />
-          <div className="flex items-center gap-2.5">
-            <div className="text-right hidden sm:block">
-              <p className="text-sm font-semibold leading-none">{user?.email?.split('@')[0]}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{user?.email}</p>
+      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+        <header className="sticky top-0 z-30 flex h-12 shrink-0 items-center justify-end gap-2.5 border-b bg-background/98 backdrop-blur-sm px-6">
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:block text-right">
+              <p className="text-[13px] font-medium leading-none text-foreground">{user?.email?.split('@')[0]}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{user?.email}</p>
             </div>
-            <div className="h-8 w-8 rounded-full bg-primary/10 ring-2 ring-primary/20 flex items-center justify-center">
-              <span className="text-xs font-bold text-primary">
+            <div className="h-7 w-7 rounded-full bg-primary/10 ring-1 ring-primary/20 flex items-center justify-center">
+              <span className="text-[11px] font-semibold text-primary">
                 {user?.email?.[0]?.toUpperCase() ?? 'A'}
               </span>
             </div>

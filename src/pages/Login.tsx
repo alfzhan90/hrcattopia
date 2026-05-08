@@ -101,7 +101,7 @@ const Login = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4"
-      style={{ background: "linear-gradient(135deg, hsl(222 47% 7%) 0%, hsl(243 40% 12%) 100%)" }}>
+      style={{ background: "linear-gradient(150deg, hsl(224 60% 7%) 0%, hsl(221 55% 12%) 100%)" }}>
       <Card className="w-full max-w-md bg-card border border-white/[0.08] shadow-2xl">
         <CardHeader className="text-center pb-2">
           {companySettings?.logo_url ? (
