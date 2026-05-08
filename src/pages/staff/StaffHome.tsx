@@ -456,11 +456,14 @@ const StaffHome = () => {
     return (
       <div className="max-w-lg mx-auto px-4 pt-6 space-y-5">
         <Alert variant="destructive">
-          <AlertDescription>
-            We couldn't load your staff profile. Please check your connection and refresh, or contact Admin.
+          <AlertDescription className="space-y-1">
+            <p className="font-medium">Staff profile not found.</p>
+            <p className="text-xs">Your account is not linked to a staff profile yet. Ask your admin to assign your profile in the Staff page. If already done, try signing out and back in.</p>
+            {user?.email && <p className="text-xs font-mono opacity-70">Account: {user.email}</p>}
           </AlertDescription>
         </Alert>
-        <Button variant="outline" onClick={() => window.location.reload()}>Retry</Button>
+        <Button variant="outline" className="w-full" onClick={() => window.location.reload()}>Retry</Button>
+        <Button variant="ghost" className="w-full text-muted-foreground" onClick={signOut}>Sign Out</Button>
       </div>
     );
   }
