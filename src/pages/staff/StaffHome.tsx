@@ -355,7 +355,7 @@ const StaffHome = () => {
       }
 
       // ---- Insert ----
-      const { error } = await supabase.from("attendance_logs").insert({
+      const { data: insertedRow, error } = await supabase.from("attendance_logs").insert({
         user_id: user.id,
         branch_id: checkBranch.id,
         check_in_lat: pos.coords.latitude,
@@ -363,7 +363,7 @@ const StaffHome = () => {
         status: (lateMinutes > 0 ? "late" : "on_time") as any,
         late_minutes: lateMinutes,
         manager_notes: remarks,
-      });
+      }).select("*").single();
       if (error) {
         const msg = error.message.toLowerCase();
         if (msg.includes("duplicate") || msg.includes("unique"))
@@ -372,6 +372,8 @@ const StaffHome = () => {
           throw new Error("Database busy — please try again in a few seconds.");
         throw new Error(error.message || "Database error during check-in.");
       }
+      supabase.functions.invoke("notify-attendance", { body: { record: insertedRow } })
+        .catch(() => {});
       return { deviceFlagMissing, isDoubleEntry };
     },
     onSuccess: ({ deviceFlagMissing, isDoubleEntry }) => {
@@ -431,6 +433,9 @@ const StaffHome = () => {
           throw new Error("Permission denied — please log out and log back in.");
         throw new Error(error.message);
       }
+      supabase.functions.invoke("notify-attendance", {
+        body: { record: { ...openLog, check_out_time: now.toISOString() } },
+      }).catch(() => {});
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["active-attendance", user?.id] });
