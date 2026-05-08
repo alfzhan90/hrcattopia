@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calculator, CheckCircle, FileText, BarChart3 } from "lucide-react";
+import { Calculator, CheckCircle, FileText, BarChart3, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
@@ -285,27 +285,49 @@ const PayrollProcessing = () => {
       }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => {
+    onSuccess: (_, id) => {
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       toast({ title: "Payslip released" });
+      const run = payrollRuns.find((r: any) => r.id === id);
+      if (run) {
+        const s = staff.find((st) => st.id === run.staff_profile_id);
+        supabase.functions.invoke("notify-payslip-released", {
+          body: {
+            staff_name: s?.name ?? "Unknown",
+            staff_id: s?.staff_id ?? "",
+            month: format(new Date(`${selectedMonth}-01`), "MMMM yyyy"),
+            net_pay: Number(run.net_pay),
+          },
+        }).catch(() => {});
+      }
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
   const releaseAllMutation = useMutation({
     mutationFn: async () => {
-      const draftIds = payrollRuns.filter((r: any) => r.status === "draft").map((r: any) => r.id);
-      for (const id of draftIds) {
+      const draftRuns = payrollRuns.filter((r: any) => r.status === "draft");
+      for (const run of draftRuns) {
         const { error } = await supabase.from("payroll_runs").update({
           status: "released" as any,
           released_at: new Date().toISOString(),
-        }).eq("id", id);
+        }).eq("id", run.id);
         if (error) throw error;
       }
+      return draftRuns;
     },
-    onSuccess: () => {
+    onSuccess: (draftRuns) => {
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       toast({ title: "All payslips released" });
+      const totalPay = draftRuns.reduce((s: number, r: any) => s + Number(r.net_pay), 0);
+      supabase.functions.invoke("notify-payslip-released", {
+        body: {
+          bulk: true,
+          count: draftRuns.length,
+          month: format(new Date(`${selectedMonth}-01`), "MMMM yyyy"),
+          total_pay: totalPay,
+        },
+      }).catch(() => {});
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -447,6 +469,31 @@ const PayrollProcessing = () => {
   const getStaffId = (profileId: string) => staff.find((s) => s.id === profileId)?.staff_id ?? "—";
   const fmt = (n: number) => `RM ${Number(n).toFixed(2)}`;
 
+  const exportPayrollCsv = () => {
+    const header = ["Staff ID", "Name", "Basic Pay", "OT Pay", "Allowance", "Commission", "Holiday Pay", "Mileage", "Gross Pay", "EPF(Ee)", "SOCSO(Ee)", "EIS(Ee)", "PCB", "UPL Deduction", "Net Pay", "Status"];
+    const rows = payrollRuns.map((run: any) => {
+      const s = staff.find((st) => st.id === run.staff_profile_id);
+      return [
+        s?.staff_id ?? "", s?.name ?? "",
+        Number(run.basic_pay).toFixed(2), Number(run.ot_pay).toFixed(2),
+        Number(run.allowance).toFixed(2), Number(run.commission).toFixed(2),
+        Number(run.holiday_pay).toFixed(2), Number(run.mileage_claim ?? 0).toFixed(2),
+        Number(run.gross_pay).toFixed(2), Number(run.epf_employee).toFixed(2),
+        Number(run.socso_employee).toFixed(2), Number(run.eis_employee).toFixed(2),
+        Number(run.pcb).toFixed(2), Number(run.upl_deduction).toFixed(2),
+        Number(run.net_pay).toFixed(2), run.status,
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `payroll_${selectedMonth}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-4 flex-wrap">
@@ -463,6 +510,12 @@ const PayrollProcessing = () => {
             <Button variant="outline" onClick={() => releaseAllMutation.mutate()} disabled={releaseAllMutation.isPending}>
               <CheckCircle className="h-4 w-4 mr-1" />
               Release All
+            </Button>
+          )}
+          {payrollRuns.length > 0 && (
+            <Button variant="outline" onClick={exportPayrollCsv}>
+              <Download className="h-4 w-4 mr-1" />
+              Export CSV
             </Button>
           )}
         </div>

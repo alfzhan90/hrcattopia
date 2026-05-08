@@ -16,6 +16,7 @@ import AttendanceRecords from "@/pages/admin/AttendanceRecords";
 import LiveAttendance from "@/pages/admin/LiveAttendance";
 import Payroll from "@/pages/admin/Payroll";
 import Management from "@/pages/admin/Management";
+import Dashboard from "@/pages/admin/Dashboard";
 import Freelancers from "@/pages/admin/Freelancers";
 import Schedules from "@/pages/admin/Schedules";
 import Approvals from "@/pages/admin/Approvals";
@@ -51,7 +52,7 @@ const HomeRedirect = () => {
 
   if (!user) return <Navigate to="/login" replace />;
   if (!role) return <Navigate to="/login" replace />;
-  if (role === "admin") return <Navigate to="/admin/branches" replace />;
+  if (role === "admin") return <Navigate to="/admin/dashboard" replace />;
   if (role === "area_manager") return <Navigate to="/admin/schedules" replace />;
   return <Navigate to="/staff/dashboard" replace />;
 };
@@ -86,6 +87,7 @@ const AppRoutes = () => (
         </ProtectedRoute>
       }
     >
+      <Route path="dashboard" element={<Dashboard />} />
       <Route path="company" element={<CompanySettings />} />
       <Route path="branches" element={<Branches />} />
       <Route path="staff" element={<Staff />} />

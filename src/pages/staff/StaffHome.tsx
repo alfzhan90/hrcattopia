@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText } from "lucide-react";
+import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText, CalendarDays } from "lucide-react";
 import { haversineDistance, generateDeviceFingerprint, isSameDevice, clearDeviceToken, getCurrentPosition } from "@/lib/geo";
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
@@ -126,6 +126,25 @@ const StaffHome = () => {
         .order("month", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
       return data;
+    },
+    enabled: !!profile,
+  });
+
+  const { data: upcomingShifts = [] } = useQuery({
+    queryKey: ["my-shifts", profile?.id],
+    queryFn: async () => {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const in7 = format(new Date(Date.now() + 7 * 86400000), "yyyy-MM-dd");
+      const { data, error } = await supabase
+        .from("schedules")
+        .select("id, date, start_time, end_time, branch_id, notes")
+        .eq("staff_profile_id", profile!.id)
+        .gte("date", today)
+        .lte("date", in7)
+        .order("date")
+        .order("start_time");
+      if (error) throw error;
+      return data ?? [];
     },
     enabled: !!profile,
   });
@@ -607,6 +626,34 @@ const StaffHome = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming Shifts */}
+      {upcomingShifts.length > 0 && (
+        <Card className="rounded-xl">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-primary" /> Upcoming Shifts
+            </p>
+            {upcomingShifts.map((s: any) => {
+              const shiftDate = new Date(s.date + "T00:00:00");
+              const isToday = s.date === format(new Date(), "yyyy-MM-dd");
+              return (
+                <div key={s.id} className={`flex items-center justify-between rounded-lg px-3 py-2 text-sm ${isToday ? "bg-primary/10 border border-primary/20" : "bg-muted/40"}`}>
+                  <div>
+                    <p className="font-medium">
+                      {isToday ? "Today" : shiftDate.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
+                    </p>
+                    {s.notes && <p className="text-xs text-muted-foreground truncate max-w-[160px]">{s.notes}</p>}
+                  </div>
+                  <span className="tabular-nums text-xs font-mono text-muted-foreground">
+                    {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
+                  </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Privacy Disclaimer */}
       <p className="text-[10px] text-muted-foreground text-center px-4 pb-4">

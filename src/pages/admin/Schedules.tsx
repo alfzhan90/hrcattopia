@@ -14,7 +14,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { CalendarDays, Plus, Trash2, Clock, AlertTriangle } from "lucide-react";
+import { CalendarDays, Plus, Trash2, Clock, AlertTriangle, Bell } from "lucide-react";
+import { format } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Schedule = Tables<"schedules">;
@@ -34,6 +35,7 @@ const Schedules = () => {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [branchFilter, setBranchFilter] = useState<string>("all");
+  const [repeatWeeks, setRepeatWeeks] = useState(0);
   const [form, setForm] = useState({
     staff_profile_id: "",
     branch_id: "",
@@ -147,21 +149,28 @@ const Schedules = () => {
       if (!form.staff_profile_id || !form.branch_id || !form.date) {
         throw new Error("Please fill all required fields.");
       }
-      const { error } = await supabase.from("schedules").insert({
-        staff_profile_id: form.staff_profile_id,
-        branch_id: form.branch_id,
-        date: form.date,
-        start_time: form.start_time,
-        end_time: form.end_time,
-        notes: form.notes || null,
-        created_by: user!.id,
+      const records = Array.from({ length: repeatWeeks + 1 }, (_, i) => {
+        const d = new Date(form.date + "T00:00:00");
+        d.setDate(d.getDate() + i * 7);
+        return {
+          staff_profile_id: form.staff_profile_id,
+          branch_id: form.branch_id,
+          date: formatDate(d),
+          start_time: form.start_time,
+          end_time: form.end_time,
+          notes: form.notes || null,
+          created_by: user!.id,
+        };
       });
+      const { error } = await supabase.from("schedules").insert(records);
       if (error) throw error;
+      return records.length;
     },
-    onSuccess: () => {
-      toast({ title: "Shift scheduled" });
+    onSuccess: (count) => {
+      toast({ title: count > 1 ? `${count} shifts scheduled` : "Shift scheduled" });
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
       setOpen(false);
+      setRepeatWeeks(0);
       setForm((f) => ({ ...f, notes: "" }));
     },
     onError: (err: Error) => {
@@ -183,6 +192,36 @@ const Schedules = () => {
     },
   });
 
+  const [sendingReminders, setSendingReminders] = useState(false);
+  const sendShiftReminders = async () => {
+    setSendingReminders(true);
+    try {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = formatDate(tomorrow);
+      const tomorrowShifts = schedules.filter((s) => s.date === tomorrowStr);
+      const payload = tomorrowShifts.map((s) => ({
+        staff_name: staffMap[s.staff_profile_id]?.name ?? "Unknown",
+        branch_name: branchMap[s.branch_id]?.name ?? "—",
+        start_time: s.start_time,
+        end_time: s.end_time,
+      }));
+      const { error } = await supabase.functions.invoke("notify-shift-reminder", {
+        body: { date_label: format(tomorrow, "EEE, d MMM"), shifts: payload },
+      });
+      if (error) throw error;
+      toast({
+        title: tomorrowShifts.length > 0
+          ? `Reminders sent for ${tomorrowShifts.length} shift${tomorrowShifts.length !== 1 ? "s" : ""}`
+          : "No shifts tomorrow — nothing sent",
+      });
+    } catch (e: any) {
+      toast({ title: "Failed to send reminders", description: e.message, variant: "destructive" });
+    } finally {
+      setSendingReminders(false);
+    }
+  };
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">
@@ -192,7 +231,11 @@ const Schedules = () => {
           </h1>
           <p className="text-muted-foreground">14-day schedule overview</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={sendShiftReminders} disabled={sendingReminders}>
+            <Bell className="h-4 w-4 mr-2" />{sendingReminders ? "Sending…" : "Notify Tomorrow"}
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" /> Schedule Shift
@@ -251,6 +294,19 @@ const Schedules = () => {
                 <Label>Notes (optional)</Label>
                 <Input value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
               </div>
+              <div>
+                <Label>Repeat weekly</Label>
+                <Select value={String(repeatWeeks)} onValueChange={(v) => setRepeatWeeks(Number(v))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">No repeat</SelectItem>
+                    <SelectItem value="1">+1 week (2 shifts)</SelectItem>
+                    <SelectItem value="2">+2 weeks (3 shifts)</SelectItem>
+                    <SelectItem value="3">+3 weeks (4 shifts)</SelectItem>
+                    <SelectItem value="4">+4 weeks (5 shifts)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
@@ -260,6 +316,7 @@ const Schedules = () => {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Branch filter */}

@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FileText, Download, DollarSign } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { generateFreelancerInvoicePdf } from "@/lib/freelancer-invoice-pdf";
 import { getPayPeriod } from "@/lib/payroll";
 import { format } from "date-fns";
@@ -26,7 +27,7 @@ const StaffInvoices = () => {
     enabled: !!user,
   });
 
-  const { data: invoices = [] } = useQuery({
+  const { data: invoices = [], isLoading: invoicesLoading } = useQuery({
     queryKey: ["my-invoices", profile?.id],
     queryFn: async () => {
       const { data } = await supabase.from("freelancer_invoices").select("*")
@@ -93,14 +94,40 @@ const StaffInvoices = () => {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Current Cycle Earnings</p>
-            <p className="text-lg font-bold">RM {currentEarnings.toFixed(2)}</p>
-            <p className="text-[10px] text-muted-foreground">{currentHours.toFixed(1)} hrs × RM {Number(profile?.base_rate ?? 0).toFixed(2)}/hr</p>
+            <p className="text-lg font-bold tabular-nums">RM {currentEarnings.toFixed(2)}</p>
+            <p className="text-[10px] text-muted-foreground tabular-nums">{currentHours.toFixed(1)} hrs × RM {Number(profile?.base_rate ?? 0).toFixed(2)}/hr</p>
           </div>
         </CardContent>
       </Card>
 
-      {invoices.length === 0 ? (
-        <Card className="rounded-xl"><CardContent className="p-6 text-center text-sm text-muted-foreground">No invoices yet.</CardContent></Card>
+      {invoicesLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i} className="rounded-xl">
+              <CardContent className="p-4 flex items-center gap-3">
+                <Skeleton className="h-10 w-10 rounded-lg shrink-0" />
+                <div className="flex-1 space-y-1.5">
+                  <Skeleton className="h-4 w-28" />
+                  <Skeleton className="h-3 w-20" />
+                </div>
+                <div className="text-right space-y-1.5">
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-12 rounded-full ml-auto" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : invoices.length === 0 ? (
+        <Card className="rounded-xl">
+          <CardContent className="p-8 text-center">
+            <div className="flex flex-col items-center gap-2 text-muted-foreground">
+              <FileText className="h-8 w-8 opacity-30" />
+              <p className="text-sm font-medium">No invoices yet.</p>
+              <p className="text-xs">Invoices will appear here once your manager generates them.</p>
+            </div>
+          </CardContent>
+        </Card>
       ) : (
         <div className="space-y-2">
           {invoices.map((inv: any) => (
@@ -111,11 +138,11 @@ const StaffInvoices = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm">{format(new Date(inv.month), "MMMM yyyy")}</p>
-                  <p className="text-xs text-muted-foreground">{inv.invoice_number}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{inv.invoice_number}</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-sm">RM {Number(inv.total_payable).toFixed(2)}</p>
-                  <Badge variant={inv.status === "paid" ? "default" : "secondary"} className="text-[10px]">{inv.status}</Badge>
+                  <p className="font-bold text-sm tabular-nums">RM {Number(inv.total_payable).toFixed(2)}</p>
+                  <Badge variant="outline" className={`text-[10px] ${inv.status === "paid" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-primary/10 text-primary border-primary/20"}`}>{inv.status}</Badge>
                 </div>
               </CardContent>
             </Card>
@@ -131,12 +158,12 @@ const StaffInvoices = () => {
               <div className="space-y-1">
                 <div className="flex justify-between"><span className="text-muted-foreground">Invoice #</span><span className="font-mono">{preview.invoice_number}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">Service</span><span>{preview.service_description}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Total Hours</span><span>{Number(preview.total_hours).toFixed(1)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Rate</span><span>RM {Number(preview.hourly_rate).toFixed(2)}/hr</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Total Hours</span><span className="tabular-nums">{Number(preview.total_hours).toFixed(1)}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">Rate</span><span className="tabular-nums">RM {Number(preview.hourly_rate).toFixed(2)}/hr</span></div>
               </div>
-              <div className="border-t pt-3">
-                <div className="flex justify-between text-lg font-bold">
-                  <span>Total Payable</span><span className="text-green-600">RM {Number(preview.total_payable).toFixed(2)}</span>
+              <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
+                <div className="flex justify-between text-base font-bold">
+                  <span>Total Payable</span><span className="tabular-nums text-emerald-700">RM {Number(preview.total_payable).toFixed(2)}</span>
                 </div>
               </div>
               <Button className="w-full h-12 rounded-xl" onClick={() => downloadInvoice(preview)}>

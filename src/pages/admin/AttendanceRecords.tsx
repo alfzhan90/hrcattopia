@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History, ClipboardList } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History, ClipboardList, Download } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,10 +30,55 @@ type AttendanceLog = Tables<"attendance_logs">;
 type StaffProfile = Tables<"staff_profiles">;
 type Branch = Tables<"branches">;
 
+const AuditHistoryDialog = ({ logId, onClose }: { logId: string | null; onClose: () => void }) => {
+  const { data: entries = [], isLoading } = useQuery({
+    queryKey: ["audit-history", logId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance_audit_logs" as any)
+        .select("*")
+        .eq("attendance_log_id", logId!)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return (data ?? []) as any[];
+    },
+    enabled: !!logId,
+  });
+
+  return (
+    <Dialog open={!!logId} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Audit History</DialogTitle></DialogHeader>
+        {isLoading ? (
+          <div className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <div key={i} className="h-8 bg-muted animate-pulse rounded" />)}</div>
+        ) : entries.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">No audit entries for this record.</p>
+        ) : (
+          <div className="space-y-2 max-h-80 overflow-y-auto">
+            {entries.map((e: any) => (
+              <div key={e.id} className="rounded-lg border p-3 text-xs space-y-1">
+                <div className="flex items-center justify-between">
+                  <Badge variant="outline" className={e.action === "delete" ? "bg-destructive/10 text-destructive border-destructive/20" : e.action === "add" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-primary/10 text-primary border-primary/20"}>
+                    {e.action}
+                  </Badge>
+                  <span className="text-muted-foreground tabular-nums">{format(new Date(e.created_at), "dd MMM yyyy HH:mm")}</span>
+                </div>
+                {e.details && (
+                  <pre className="text-muted-foreground font-mono text-[10px] whitespace-pre-wrap break-all">{JSON.stringify(e.details, null, 2)}</pre>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const AttendanceRecords = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { role } = useAuth();
+  const { user, role } = useAuth();
   const isAdmin = role === "admin";
   const [branchFilter, setBranchFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -58,6 +103,18 @@ const AttendanceRecords = () => {
   const [addDate, setAddDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [addCheckIn, setAddCheckIn] = useState("09:30");
   const [addCheckOut, setAddCheckOut] = useState("18:30");
+
+  // Audit history dialog
+  const [auditLogId, setAuditLogId] = useState<string | null>(null);
+
+  const writeAudit = (attendance_log_id: string | null, action: "add" | "edit" | "delete", details: object) => {
+    supabase.from("attendance_audit_logs" as any).insert({
+      attendance_log_id,
+      action,
+      actor_id: user?.id ?? null,
+      details,
+    } as any).then(() => {});
+  };
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-all"],
@@ -99,6 +156,36 @@ const AttendanceRecords = () => {
 
   const staffMap = Object.fromEntries(staff.map((s) => [s.user_id, s]));
   const branchMap = Object.fromEntries(branches.map((b) => [b.id, b]));
+
+  const exportCsv = () => {
+    const header = ["Date", "Staff ID", "Name", "Clock In", "Clock Out", "Total Hrs", "Net Hrs", "OT Hrs", "Status", "Flags"];
+    const rows = filteredLogs.map((log) => {
+      const s = staffMap[log.user_id];
+      const totalHrs = log.check_out_time
+        ? ((new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / 3600000).toFixed(2)
+        : "";
+      return [
+        format(new Date(log.check_in_time), "dd/MM/yyyy"),
+        s?.staff_id ?? "",
+        s?.name ?? "Unknown",
+        format(new Date(log.check_in_time), "HH:mm"),
+        log.check_out_time ? format(new Date(log.check_out_time), "HH:mm") : "",
+        totalHrs,
+        Number(log.net_hours).toFixed(2),
+        Number(log.ot_hours).toFixed(2),
+        log.status,
+        log.manager_notes ?? "",
+      ].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",");
+    });
+    const csv = [header.join(","), ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `attendance_${dateFrom}_${dateTo}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   const filteredLogs = logs.filter((log) => {
     if (searchTerm) {
@@ -203,6 +290,10 @@ const AttendanceRecords = () => {
         })
         .eq("id", editLog.id);
       if (error) throw error;
+      writeAudit(editLog.id, "edit", {
+        before: { check_in_time: editLog.check_in_time, check_out_time: editLog.check_out_time },
+        after: { check_in_time: checkIn.toISOString(), check_out_time: checkOut?.toISOString() ?? null },
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
@@ -216,8 +307,17 @@ const AttendanceRecords = () => {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
+      const logToDelete = logs.find((l) => l.id === id);
       const { error } = await supabase.from("attendance_logs").delete().eq("id", id);
       if (error) throw error;
+      if (logToDelete) {
+        writeAudit(null, "delete", {
+          deleted_id: id,
+          check_in_time: logToDelete.check_in_time,
+          check_out_time: logToDelete.check_out_time,
+          user_id: logToDelete.user_id,
+        });
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
@@ -243,7 +343,7 @@ const AttendanceRecords = () => {
       const regularHours = Math.min(netHours, 8);
       const otHours = Math.max(netHours - 8, 0);
 
-      const { error } = await supabase.from("attendance_logs").insert({
+      const { data: inserted, error } = await supabase.from("attendance_logs").insert({
         user_id: staffProfile.user_id,
         branch_id: staffProfile.branch_id,
         check_in_time: checkIn.toISOString(),
@@ -253,8 +353,13 @@ const AttendanceRecords = () => {
         rest_hours: Math.round(restHours * 100) / 100,
         regular_hours: Math.round(regularHours * 100) / 100,
         ot_hours: Math.round(otHours * 100) / 100,
-      });
+      }).select("id").single();
       if (error) throw error;
+      writeAudit(inserted?.id ?? null, "add", {
+        staff_name: staffProfile.name,
+        check_in_time: checkIn.toISOString(),
+        check_out_time: checkOut.toISOString(),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
@@ -273,10 +378,16 @@ const AttendanceRecords = () => {
           <h1 className="text-2xl font-bold tracking-tight">Staff Attendance Records</h1>
           <p className="text-muted-foreground">View and edit all attendance logs.</p>
         </div>
-        <Button onClick={() => setAddOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Log
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={filteredLogs.length === 0}>
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
+          <Button onClick={() => setAddOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Log
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -403,6 +514,9 @@ const AttendanceRecords = () => {
                         <Button variant="ghost" size="icon" onClick={() => openEdit(log)} aria-label="Edit log">
                           <Pencil className="h-4 w-4" />
                         </Button>
+                        <Button variant="ghost" size="icon" onClick={() => setAuditLogId(log.id)} aria-label="View audit history">
+                          <History className="h-4 w-4" />
+                        </Button>
                         {isAdmin && (
                           <Button
                             variant="ghost"
@@ -497,6 +611,9 @@ const AttendanceRecords = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Audit history dialog */}
+      <AuditHistoryDialog logId={auditLogId} onClose={() => setAuditLogId(null)} />
 
       {/* Delete confirmation */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

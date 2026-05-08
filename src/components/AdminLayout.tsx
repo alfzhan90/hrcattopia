@@ -15,6 +15,7 @@ import {
 import ThemeToggle from "@/components/ThemeToggle";
 
 const adminNavItems = [
+  { to: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/admin/company", icon: Settings, label: "Company Settings" },
   { to: "/admin/branches", icon: Building2, label: "Branches" },
   { to: "/admin/staff", icon: Users, label: "Staff" },
@@ -34,7 +35,7 @@ const managerNavItems = [
 ];
 
 const adminDockItems = [
-  { to: "/admin/branches", icon: Building2, label: "Home" },
+  { to: "/admin/dashboard", icon: LayoutDashboard, label: "Home" },
   { to: "/admin/attendance", icon: ClipboardList, label: "Attendance" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
@@ -201,6 +202,7 @@ const AdminLayout = () => {
 
       <main className="flex-1 flex flex-col overflow-hidden">
         <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center justify-end gap-3 border-b bg-background/95 backdrop-blur px-6">
+          <ThemeToggle />
           <div className="flex items-center gap-2.5">
             <div className="text-right hidden sm:block">
               <p className="text-sm font-semibold leading-none">{user?.email?.split('@')[0]}</p>
