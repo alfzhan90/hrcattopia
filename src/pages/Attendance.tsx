@@ -15,7 +15,7 @@ import type { Tables } from "@/integrations/supabase/types";
 type StaffProfile = Tables<"staff_profiles">;
 type Branch = Tables<"branches">;
 
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "AIzaSyCVQTyrQN4Dz07qZxHSV7QSF-riz2kDJMM";
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY ?? "";
 
 const Attendance = () => {
   const { user } = useAuth();
@@ -27,7 +27,7 @@ const Attendance = () => {
   const [distance, setDistance] = useState<number | null>(null);
   const [resolvedDeviceId, setResolvedDeviceId] = useState<string | null>(null);
 
-  const { isLoaded } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY });
+  const { isLoaded, loadError } = useJsApiLoader({ googleMapsApiKey: GOOGLE_MAPS_API_KEY });
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -357,7 +357,7 @@ const Attendance = () => {
         {branch && <p className="text-xs text-muted-foreground mt-1">{branch.name}</p>}
       </div>
 
-      {GOOGLE_MAPS_API_KEY && isLoaded && branch && (
+      {GOOGLE_MAPS_API_KEY && !loadError && isLoaded && branch && (
         <div className="rounded-lg border overflow-hidden" style={{ height: 250 }}>
           <GoogleMap
             mapContainerStyle={{ width: "100%", height: "100%" }}
