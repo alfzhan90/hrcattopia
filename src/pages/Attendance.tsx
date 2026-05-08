@@ -357,7 +357,7 @@ const Attendance = () => {
         {branch && <p className="text-xs text-muted-foreground mt-1">{branch.name}</p>}
       </div>
 
-      {GOOGLE_MAPS_API_KEY && isLoaded && branch && (
+      {GOOGLE_MAPS_API_KEY && !loadError && isLoaded && branch && (
         <div className="rounded-lg border overflow-hidden" style={{ height: 250 }}>
           <GoogleMap
             mapContainerStyle={{ width: "100%", height: "100%" }}
