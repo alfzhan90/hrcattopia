@@ -1,6 +1,4 @@
 // Notify admin when a payslip (or all payslips) is released
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -17,11 +15,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
     const TELEGRAM_CHAT_ID = Deno.env.get("TELEGRAM_CHAT_ID");
-    if (!LOVABLE_API_KEY || !TELEGRAM_API_KEY || !TELEGRAM_CHAT_ID) {
-      throw new Error("Telegram secrets not configured");
+    if (!TELEGRAM_API_KEY || !TELEGRAM_CHAT_ID) {
+      throw new Error("TELEGRAM_API_KEY or TELEGRAM_CHAT_ID not configured");
     }
 
     const body = await req.json();
@@ -51,13 +48,9 @@ Deno.serve(async (req) => {
         `💵 Net pay: <b>RM ${fmt(Number(net_pay))}</b>`;
     }
 
-    const res = await fetch(`${GATEWAY_URL}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_API_KEY}/sendMessage`, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text, parse_mode: "HTML" }),
     });
     const data = await res.json();

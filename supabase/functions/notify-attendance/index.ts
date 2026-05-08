@@ -1,16 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
-const ALLOWED_ORIGIN_PATTERNS = [
-  /^https:\/\/.*\.lovable\.app$/,
-  /^https:\/\/.*\.lovableproject\.com$/,
-];
-
-const getCorsHeaders = (origin: string | null) => ({
-  "Access-Control-Allow-Origin": origin && ALLOWED_ORIGIN_PATTERNS.some((pattern) => pattern.test(origin)) ? origin : "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+const getCorsHeaders = (_origin: string | null) => ({
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Vary": "Origin",
 });
 
 const escapeHtml = (value: string) =>
@@ -30,9 +23,6 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
     console.log("Function received data:", body);
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
     if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
@@ -135,13 +125,9 @@ Deno.serve(async (req) => {
       `🕐 Time: ${escapeHtml(eventTime)}` +
       lateInfo;
 
-    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_API_KEY}/sendMessage`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: TELEGRAM_CHAT_ID,
         text: message,
