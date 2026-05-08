@@ -274,7 +274,7 @@ const Attendance = () => {
         .limit(1);
       if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
       const openLog = openLogs?.[0];
-      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+      if (!openLog) throw new Error("No active session found. If it's past 8:30 PM, the system may have auto-checked you out. Contact your admin if your hours are wrong.");
 
       const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
@@ -451,7 +451,7 @@ const Attendance = () => {
           size="lg"
           variant="outline"
           className="h-20 text-lg"
-          disabled={checkOutMutation.isPending}
+          disabled={!activeLog || checkOutMutation.isPending}
           onClick={() => checkOutMutation.mutate()}
         >
           <LogOut className="h-6 w-6 mr-2" />

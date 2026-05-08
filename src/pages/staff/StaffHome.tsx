@@ -406,7 +406,7 @@ const StaffHome = () => {
         .limit(1);
       if (fetchErr) throw new Error(fetchErr.message || "Could not load your active session.");
       const openLog = openLogs?.[0];
-      if (!openLog) throw new Error("No active check-in found. Refresh the page and try again.");
+      if (!openLog) throw new Error("No active session found. If it's past 8:30 PM, the system may have auto-checked you out. Contact your admin if your hours are wrong.");
 
       const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
@@ -583,9 +583,7 @@ const StaffHome = () => {
               size="lg"
               variant="destructive"
               className="h-14 text-base rounded-xl shadow-md"
-              // Always allow tapping unless mutation is in-flight. The mutation
-              // re-fetches the open log live, so a stale cache cannot block checkout.
-              disabled={checkOutMutation.isPending}
+              disabled={!activeLog || checkOutMutation.isPending}
               onClick={() => checkOutMutation.mutate()}
             >
               <LogOut className="h-5 w-5 mr-2" />
