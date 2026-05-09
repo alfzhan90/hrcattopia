@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Calculator, CheckCircle, FileText, BarChart3, Download } from "lucide-react";
+import { Calculator, CheckCircle, FileText, BarChart3, Download, Timer, AlertTriangle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated, clampToShift } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
@@ -27,6 +27,13 @@ const PayrollProcessing = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [editRun, setEditRun] = useState<any>(null);
   const [monthlySummary, setMonthlySummary] = useState<Record<string, { daysWorked: number; al: number; mc: number; el: number; upl: number; mia: number; lateCount: number; lateMinutes: number; lateDeduction: number }>>({});
+
+  type OutOfShiftItem = {
+    logId: string; staffName: string; staffId: string; date: string;
+    checkIn: string; checkOut: string | null;
+    earlyMins: number; lateMins: number; extraHrs: number; approved: boolean;
+  };
+  const [outOfShiftLogs, setOutOfShiftLogs] = useState<OutOfShiftItem[]>([]);
 
   const monthDate = `${selectedMonth}-01`;
   const payPeriod = getPayPeriod(selectedMonth);
@@ -252,6 +259,40 @@ const PayrollProcessing = () => {
         summaryMap[run.staff_profile_id] = (run as any)._summary;
       }
 
+      // Collect out-of-shift logs for batch OT review
+      const MYT_MS = 8 * 60 * 60 * 1000;
+      const staffByUserId = new Map(staff.map((s) => [s.user_id, s]));
+      const outOfShiftItems: OutOfShiftItem[] = (allLogs ?? [])
+        .filter((log) => {
+          const inMin = new Date(new Date(log.check_in_time).getTime() + MYT_MS);
+          if (inMin.getUTCHours() * 60 + inMin.getUTCMinutes() < 9 * 60 + 30) return true;
+          if (!log.check_out_time) return false;
+          const outMin = new Date(new Date(log.check_out_time).getTime() + MYT_MS);
+          return outMin.getUTCHours() * 60 + outMin.getUTCMinutes() > 18 * 60 + 30;
+        })
+        .map((log) => {
+          const s = staffByUserId.get(log.user_id);
+          const inMyt = new Date(new Date(log.check_in_time).getTime() + MYT_MS);
+          const earlyMins = Math.max(0, (9 * 60 + 30) - (inMyt.getUTCHours() * 60 + inMyt.getUTCMinutes()));
+          let lateMins = 0;
+          if (log.check_out_time) {
+            const outMyt = new Date(new Date(log.check_out_time).getTime() + MYT_MS);
+            lateMins = Math.max(0, (outMyt.getUTCHours() * 60 + outMyt.getUTCMinutes()) - (18 * 60 + 30));
+          }
+          return {
+            logId: log.id,
+            staffName: s?.name ?? "Unknown",
+            staffId: s?.staff_id ?? "",
+            date: format(new Date(log.check_in_time), "dd/MM/yyyy"),
+            checkIn: format(new Date(log.check_in_time), "HH:mm"),
+            checkOut: log.check_out_time ? format(new Date(log.check_out_time), "HH:mm") : null,
+            earlyMins,
+            lateMins,
+            extraHrs: Math.round(((earlyMins + lateMins) / 60) * 10) / 10,
+            approved: (log as any).ot_approved ?? false,
+          };
+        });
+
       // Upsert
       for (const run of runs) {
         const { _summary, ...dbRun } = run as any;
@@ -269,12 +310,25 @@ const PayrollProcessing = () => {
         }
       }
       
-      return summaryMap;
+      return { summaryMap, outOfShiftItems };
     },
-    onSuccess: (summaryMap) => {
+    onSuccess: ({ summaryMap, outOfShiftItems }) => {
       if (summaryMap) setMonthlySummary(summaryMap);
+      setOutOfShiftLogs(outOfShiftItems);
       queryClient.invalidateQueries({ queryKey: ["payroll-runs"] });
       toast({ title: "Payroll calculated", description: "Review and adjust allowance/commission/PCB before releasing." });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const approveOtMutation = useMutation({
+    mutationFn: async (logId: string) => {
+      const { error } = await supabase.from("attendance_logs").update({ ot_approved: true } as any).eq("id", logId);
+      if (error) throw error;
+    },
+    onSuccess: (_, logId) => {
+      setOutOfShiftLogs((prev) => prev.map((item) => item.logId === logId ? { ...item, approved: true } : item));
+      toast({ title: "OT approved", description: "Recalculate payroll to include these hours." });
     },
     onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -522,6 +576,73 @@ const PayrollProcessing = () => {
           )}
         </div>
       </div>
+      {/* OT Review Panel — appears after Calculate Payroll if any logs are outside shift hours */}
+      {outOfShiftLogs.length > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-semibold text-amber-700">Out-of-Shift Hours Detected</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {outOfShiftLogs.filter(i => !i.approved).length} record(s) have hours outside 9:30 AM – 6:30 PM and are excluded from payroll.
+                Approve OT below, then recalculate to include them.
+              </p>
+            </div>
+          </div>
+          <div className="rounded-md border overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Staff</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Clock In</TableHead>
+                  <TableHead>Clock Out</TableHead>
+                  <TableHead>Extra Hrs</TableHead>
+                  <TableHead>OT</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {outOfShiftLogs.map((item) => (
+                  <TableRow key={item.logId}>
+                    <TableCell>
+                      <p className="text-sm font-medium">{item.staffName}</p>
+                      <p className="text-xs text-muted-foreground font-mono">{item.staffId}</p>
+                    </TableCell>
+                    <TableCell className="text-sm">{item.date}</TableCell>
+                    <TableCell className={`text-sm tabular-nums font-medium ${item.earlyMins > 0 ? "text-amber-600" : ""}`}>{item.checkIn}</TableCell>
+                    <TableCell className={`text-sm tabular-nums font-medium ${item.lateMins > 0 ? "text-amber-600" : ""}`}>{item.checkOut ?? "—"}</TableCell>
+                    <TableCell className="text-sm tabular-nums">{item.extraHrs}h</TableCell>
+                    <TableCell>
+                      {item.approved ? (
+                        <Badge className="bg-amber-500/10 text-amber-700 border-amber-500/30">
+                          <Timer className="h-3 w-3 mr-1" /> Approved
+                        </Badge>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-xs border-amber-500/40 text-amber-700 hover:bg-amber-500/10"
+                          onClick={() => approveOtMutation.mutate(item.logId)}
+                          disabled={approveOtMutation.isPending}
+                        >
+                          Approve OT
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          {outOfShiftLogs.some(i => i.approved) && (
+            <Button size="sm" onClick={() => generateMutation.mutate()} disabled={generateMutation.isPending}>
+              <Calculator className="h-3.5 w-3.5 mr-1.5" />
+              Recalculate with Approved OT
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="rounded-md bg-muted px-4 py-2 text-sm text-muted-foreground space-y-1">
         <div><span className="font-medium text-foreground">Calculation Period:</span> {payPeriod.label}</div>
         <div><span className="font-medium text-foreground">Proration (Section 18A):</span> {getCalendarDaysForMonth(selectedMonth)} calendar days in {format(new Date(monthDate), "MMMM yyyy")} — UPL deducted at 1/{getCalendarDaysForMonth(selectedMonth)} of basic salary per day</div>
