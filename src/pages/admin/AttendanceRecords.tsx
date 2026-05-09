@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History, ClipboardList, Download } from "lucide-react";
+import { Pencil, Plus, Search, AlertTriangle, Bot, Flag, Trash2, History, ClipboardList, Download, Timer } from "lucide-react";
 import { format, subDays } from "date-fns";
 import { classifyRemark, type RemarkKind } from "@/lib/attendance-remarks";
 import { useAuth } from "@/contexts/AuthContext";
@@ -115,6 +115,31 @@ const AttendanceRecords = () => {
       details,
     } as any).then(() => {});
   };
+
+  // Returns true if the log has times outside the standard shift window (needs OT approval)
+  const isOutsideShift = (log: AttendanceLog) => {
+    const MYT = 8 * 60 * 60 * 1000;
+    const inMyt = new Date(new Date(log.check_in_time).getTime() + MYT);
+    if (inMyt.getUTCHours() * 60 + inMyt.getUTCMinutes() < 9 * 60 + 30) return true;
+    if (!log.check_out_time) return false;
+    const outMyt = new Date(new Date(log.check_out_time).getTime() + MYT);
+    return outMyt.getUTCHours() * 60 + outMyt.getUTCMinutes() > 18 * 60 + 30;
+  };
+
+  const otApproveMutation = useMutation({
+    mutationFn: async ({ id, approved }: { id: string; approved: boolean }) => {
+      const { error } = await supabase
+        .from("attendance_logs")
+        .update({ ot_approved: approved } as any)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["attendance-records"] });
+      toast({ title: "OT updated" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
 
   const { data: staff = [] } = useQuery({
     queryKey: ["staff-all"],
@@ -500,13 +525,18 @@ const AttendanceRecords = () => {
                     <TableCell className="tabular-nums">{Number(log.net_hours).toFixed(1)}</TableCell>
                     <TableCell className="tabular-nums">{Number(log.ot_hours).toFixed(1)}</TableCell>
                     <TableCell>
-                      {log.status === "late" ? (
-                        <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
-                          Late{log.late_waived ? " (Waived)" : ""}
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/20">On Time</Badge>
-                      )}
+                      <div className="flex flex-col gap-1">
+                        {log.status === "late" ? (
+                          <Badge variant="outline" className="text-xs bg-destructive/10 text-destructive border-destructive/20">
+                            Late{log.late_waived ? " (Waived)" : ""}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-700 border-emerald-500/20">On Time</Badge>
+                        )}
+                        {(log as any).ot_approved && (
+                          <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-700 border-amber-500/20">OT Approved</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{flagBadges(log.manager_notes)}</TableCell>
                     <TableCell className="text-right">
@@ -517,6 +547,18 @@ const AttendanceRecords = () => {
                         <Button variant="ghost" size="icon" onClick={() => setAuditLogId(log.id)} aria-label="View audit history">
                           <History className="h-4 w-4" />
                         </Button>
+                        {isAdmin && isOutsideShift(log) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => otApproveMutation.mutate({ id: log.id, approved: !(log as any).ot_approved })}
+                            aria-label={(log as any).ot_approved ? "Revoke OT approval" : "Approve OT"}
+                            className={(log as any).ot_approved ? "text-amber-600 hover:text-amber-700 hover:bg-amber-500/10" : "text-muted-foreground hover:text-amber-600 hover:bg-amber-500/10"}
+                            title={(log as any).ot_approved ? "Revoke OT" : "Approve OT"}
+                          >
+                            <Timer className="h-4 w-4" />
+                          </Button>
+                        )}
                         {isAdmin && (
                           <Button
                             variant="ghost"

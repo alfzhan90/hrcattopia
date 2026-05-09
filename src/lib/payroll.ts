@@ -163,6 +163,45 @@ export const calcEis = (salary: number): { employee: number; employer: number } 
 /** Calculate daily rate from monthly salary (assume 26 working days) — legacy, use calcDailyRateProrated instead */
 export const dailyRate = (monthlySalary: number) => monthlySalary / 26;
 
+// Company shift window — MYT (UTC+8, no DST)
+const MYT_OFFSET_MS = 8 * 60 * 60 * 1000;
+export const SHIFT_START = { h: 9, m: 30 };  // 9:30 AM
+export const SHIFT_END   = { h: 18, m: 30 }; // 6:30 PM
+
+/**
+ * Clamp effective check-in/out to shift hours for payroll purposes.
+ * Early arrivals (before 9:30 AM) are treated as 9:30 AM.
+ * Late departures (after 6:30 PM) are treated as 6:30 PM unless ot_approved.
+ * Raw logs are never modified — clamping is calculation-only.
+ */
+export const clampToShift = (
+  checkInIso: string,
+  checkOutIso: string | null,
+  otApproved: boolean
+): { effectiveIn: Date; effectiveOut: Date | null } => {
+  const checkIn = new Date(checkInIso);
+
+  // Resolve MYT calendar date of check-in
+  const checkInMyt = new Date(checkIn.getTime() + MYT_OFFSET_MS);
+  const y = checkInMyt.getUTCFullYear();
+  const mo = checkInMyt.getUTCMonth();
+  const d = checkInMyt.getUTCDate();
+
+  // Shift start UTC: 9:30 AM MYT = 01:30 UTC
+  const shiftStartUtc = new Date(Date.UTC(y, mo, d, SHIFT_START.h - 8, SHIFT_START.m));
+  const effectiveIn = checkIn < shiftStartUtc ? shiftStartUtc : checkIn;
+
+  if (!checkOutIso) return { effectiveIn, effectiveOut: null };
+
+  const checkOut = new Date(checkOutIso);
+
+  // Shift end UTC: 6:30 PM MYT = 10:30 UTC
+  const shiftEndUtc = new Date(Date.UTC(y, mo, d, SHIFT_END.h - 8, SHIFT_END.m));
+  const effectiveOut = !otApproved && checkOut > shiftEndUtc ? shiftEndUtc : checkOut;
+
+  return { effectiveIn, effectiveOut };
+};
+
 /**
  * Calculate UPL deduction using Section 18A proration.
  * @param monthlySalary - Monthly basic salary

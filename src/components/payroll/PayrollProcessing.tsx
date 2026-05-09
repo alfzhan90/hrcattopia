@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Calculator, CheckCircle, FileText, BarChart3, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated } from "@/lib/payroll";
+import { calcEpfEmployee, calcEpfEmployer, calcSocso, calcEis, calcUplDeduction, calcHourlyRate, calcRestHours, calcNetHours, calcDailyOt, getPayPeriod, getCalendarDaysForMonth, calcDailyRateProrated, clampToShift } from "@/lib/payroll";
 import { generatePayslipPdf } from "@/lib/payslip-pdf";
 import { jsPDF } from "jspdf";
 import { format, startOfWeek, eachDayOfInterval, isWeekend } from "date-fns";
@@ -137,8 +137,9 @@ const PayrollProcessing = () => {
         let freelancerNetHoursTotal = 0;
         if (isFreelancer) {
           (staffLogs ?? []).forEach((log) => {
-            const totalHrs = log.check_out_time
-              ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
+            const { effectiveIn, effectiveOut } = clampToShift(log.check_in_time, log.check_out_time, (log as any).ot_approved ?? false);
+            const totalHrs = effectiveOut
+              ? (effectiveOut.getTime() - effectiveIn.getTime()) / (1000 * 60 * 60)
               : 0;
             const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
             freelancerNetHoursTotal += netHrs;
@@ -170,8 +171,9 @@ const PayrollProcessing = () => {
           const weekKey = format(startOfWeek(new Date(log.check_in_time), { weekStartsOn: 1 }), "yyyy-MM-dd");
           const multiplier = holidayDates.get(logDate);
 
-          const totalHrs = log.check_out_time
-            ? (new Date(log.check_out_time).getTime() - new Date(log.check_in_time).getTime()) / (1000 * 60 * 60)
+          const { effectiveIn, effectiveOut } = clampToShift(log.check_in_time, log.check_out_time, (log as any).ot_approved ?? false);
+          const totalHrs = effectiveOut
+            ? (effectiveOut.getTime() - effectiveIn.getTime()) / (1000 * 60 * 60)
             : 0;
           const netHrs = Number(log.net_hours) > 0 ? Number(log.net_hours) : calcNetHours(totalHrs);
 
