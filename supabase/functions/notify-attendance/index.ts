@@ -1,6 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
-const GATEWAY_URL = "https://connector-gateway.lovable.dev/telegram";
 const ALLOWED_ORIGIN_PATTERNS = [
   /^https:\/\/.*\.lovable\.app$/,
   /^https:\/\/.*\.lovableproject\.com$/,
@@ -30,9 +29,6 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
     const body = rawBody ? JSON.parse(rawBody) : {};
     console.log("Function received data:", body);
-
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const TELEGRAM_API_KEY = Deno.env.get("TELEGRAM_API_KEY");
     if (!TELEGRAM_API_KEY) throw new Error("TELEGRAM_API_KEY is not configured");
@@ -135,11 +131,9 @@ Deno.serve(async (req) => {
       `🕐 Time: ${escapeHtml(eventTime)}` +
       lateInfo;
 
-    const response = await fetch(`${GATEWAY_URL}/sendMessage`, {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_API_KEY}/sendMessage`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "X-Connection-Api-Key": TELEGRAM_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
