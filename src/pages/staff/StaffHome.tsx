@@ -20,6 +20,32 @@ import type { Tables } from "@/integrations/supabase/types";
 type StaffProfile = Tables<"staff_profiles">;
 type Branch = Tables<"branches">;
 
+// Isolated timer — only this re-renders every second, not the whole page
+const ClockTimer = ({ checkInTime }: { checkInTime: string }) => {
+  const [elapsed, setElapsed] = useState("00:00:00");
+  useEffect(() => {
+    const tick = () => {
+      const diff = Math.floor((Date.now() - new Date(checkInTime).getTime()) / 1000);
+      const h = String(Math.floor(diff / 3600)).padStart(2, "0");
+      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
+      const s = String(diff % 60).padStart(2, "0");
+      setElapsed(`${h}:${m}:${s}`);
+    };
+    tick();
+    const iv = setInterval(tick, 1000);
+    return () => clearInterval(iv);
+  }, [checkInTime]);
+  return (
+    <div className="text-center py-3">
+      <p className="text-xs text-muted-foreground uppercase tracking-wider">Working Time</p>
+      <p className="text-4xl font-mono font-bold tracking-tight tabular-nums mt-1">{elapsed}</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Since {new Date(checkInTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+      </p>
+    </div>
+  );
+};
+
 const StaffHome = () => {
   const { user, signOut } = useAuth();
   const { toast } = useToast();
@@ -29,7 +55,6 @@ const StaffHome = () => {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [resolvedDeviceId, setResolvedDeviceId] = useState<string | null>(null);
-  const [elapsed, setElapsed] = useState<string>("00:00:00");
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -116,6 +141,7 @@ const StaffHome = () => {
       return (data ?? []).reduce((s, r) => s + Number(r.ot_hours), 0);
     },
     enabled: !!user,
+    staleTime: 1000 * 60 * 15, // refresh every 15 min — not critical
   });
 
   const { data: latestPayslip } = useQuery({
@@ -128,6 +154,7 @@ const StaffHome = () => {
       return data;
     },
     enabled: !!profile,
+    staleTime: 1000 * 60 * 30, // payslip rarely changes — cache 30 min
   });
 
   const { data: upcomingShifts = [] } = useQuery({
@@ -147,6 +174,7 @@ const StaffHome = () => {
       return data ?? [];
     },
     enabled: !!profile,
+    staleTime: 1000 * 60 * 10, // shifts change rarely during the day
   });
 
   // Check for missed clock-out from previous days.
@@ -195,19 +223,24 @@ const StaffHome = () => {
     bindDeviceMutation.mutate();
   }, [user, profile, resolvedDeviceId, bindDeviceMutation.isPending]);
 
-  // GPS watch
+  // GPS poll every 15s using network/WiFi accuracy (fast, battery-friendly).
+  // High-accuracy GPS is only used at the moment of actual clock-in.
   useEffect(() => {
     if (!navigator.geolocation) { setGpsDenied(true); return; }
-    const id = navigator.geolocation.watchPosition(
-      (pos) => {
-        setGpsDenied(false);
-        setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
-      },
-      (err) => { if (err?.code === err?.PERMISSION_DENIED) setGpsDenied(true); },
-      { enableHighAccuracy: true }
-    );
-    return () => navigator.geolocation.clearWatch(id);
+    const fetchPos = () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGpsDenied(false);
+          setUserPos({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+          if (activeBranch) setDistance(haversineDistance(pos.coords.latitude, pos.coords.longitude, activeBranch.latitude, activeBranch.longitude));
+        },
+        (err) => { if (err?.code === err?.PERMISSION_DENIED) setGpsDenied(true); },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 10000 }
+      );
+    };
+    fetchPos();
+    const id = setInterval(fetchPos, 15000);
+    return () => clearInterval(id);
   }, [activeBranch]);
 
   // Auto-suggest closest branch within 200m for Area Managers / Freelancers
@@ -228,20 +261,6 @@ const StaffHome = () => {
     }
   }, [userPos, isAreaManager, isFreelancer, allBranches, allBranchesFreelancer]);
 
-  // Live timer
-  useEffect(() => {
-    if (!activeLog) { setElapsed("00:00:00"); return; }
-    const tick = () => {
-      const diff = Math.floor((Date.now() - new Date(activeLog.check_in_time).getTime()) / 1000);
-      const h = String(Math.floor(diff / 3600)).padStart(2, "0");
-      const m = String(Math.floor((diff % 3600) / 60)).padStart(2, "0");
-      const s = String(diff % 60).padStart(2, "0");
-      setElapsed(`${h}:${m}:${s}`);
-    };
-    tick();
-    const iv = setInterval(tick, 1000);
-    return () => clearInterval(iv);
-  }, [activeLog]);
 
   const checkInMutation = useMutation({
     mutationFn: async () => {
@@ -552,16 +571,8 @@ const StaffHome = () => {
             )}
           </div>
 
-          {/* Timer */}
-          {activeLog && (
-            <div className="text-center py-3">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Working Time</p>
-              <p className="text-4xl font-mono font-bold tracking-tight tabular-nums mt-1">{elapsed}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Since {new Date(activeLog.check_in_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </p>
-            </div>
-          )}
+          {/* Timer — isolated component so only it re-renders every second */}
+          {activeLog && <ClockTimer checkInTime={activeLog.check_in_time} />}
 
           {/* Errors */}
           {geoError && (
