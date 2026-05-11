@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,8 +9,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowRightLeft, UserX, UserCheck, AlertTriangle } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { ArrowRightLeft, UserX, UserCheck, AlertTriangle, Calculator } from "lucide-react";
+import { format, addDays, getDaysInMonth } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -277,47 +277,91 @@ export default function EmploymentStatusWizard({ staff, open, onOpenChange }: Pr
           </form>
         )}
 
-        {step === "resign" && (
-          <form onSubmit={(e) => { e.preventDefault(); resignMutation.mutate(); }} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Exit Type</Label>
-              <Select value={exitType} onValueChange={(v) => setExitType(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="resigned">Resignation</SelectItem>
-                  <SelectItem value="terminated">Termination</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
+        {step === "resign" && (() => {
+          // Final pay preview calculation
+          const baseSalary = Number(staff.base_rate);
+          const lastDay = lastWorkingDay ? new Date(lastWorkingDay + "T00:00:00") : null;
+          const daysInLastMonth = lastDay ? getDaysInMonth(lastDay) : 30;
+          const dayOfMonth = lastDay ? lastDay.getDate() : 0;
+          const proratedSalary = lastDay ? Math.round((baseSalary / daysInLastMonth) * dayOfMonth * 100) / 100 : 0;
+          const dailyRate = baseSalary > 0 ? Math.round((baseSalary / 26) * 100) / 100 : 0;
+          const encashAmt = Math.round(parseInt(encashmentDays || "0") * dailyRate * 100) / 100;
+          const totalFinalPay = proratedSalary + encashAmt;
+
+          return (
+            <form onSubmit={(e) => { e.preventDefault(); resignMutation.mutate(); }} className="space-y-4">
               <div className="space-y-2">
-                <Label>Last Working Day</Label>
-                <Input type="date" value={lastWorkingDay} onChange={(e) => setLastWorkingDay(e.target.value)} required />
+                <Label>Exit Type</Label>
+                <Select value={exitType} onValueChange={(v) => setExitType(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="resigned">Resignation</SelectItem>
+                    <SelectItem value="terminated">Termination</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              {staff.employment_type !== "Freelancer" && (
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Leave Encashment Days</Label>
-                  <Input type="number" min="0" value={encashmentDays} onChange={(e) => setEncashmentDays(e.target.value)} />
-                  <p className="text-xs text-muted-foreground">AL balance: {staff.al_balance} days</p>
+                  <Label>Last Working Day</Label>
+                  <Input type="date" value={lastWorkingDay} onChange={(e) => setLastWorkingDay(e.target.value)} required />
+                </div>
+                {staff.employment_type !== "Freelancer" && (
+                  <div className="space-y-2">
+                    <Label>Leave Encashment Days</Label>
+                    <Input type="number" min="0" max={staff.al_balance} value={encashmentDays} onChange={(e) => setEncashmentDays(e.target.value)} />
+                    <p className="text-xs text-muted-foreground">
+                      AL balance: {staff.al_balance} days
+                      {parseInt(encashmentDays || "0") < staff.al_balance && parseInt(encashmentDays || "0") < staff.al_balance
+                        ? ` (remaining ${staff.al_balance - parseInt(encashmentDays || "0")} days used as leave)`
+                        : ""}
+                    </p>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label>Reason for Leaving</Label>
+                <Textarea value={exitReason} onChange={(e) => setExitReason(e.target.value)} placeholder="e.g. Personal reasons, end of contract..." required />
+              </div>
+
+              {/* Final Pay Preview */}
+              {staff.employment_type !== "Freelancer" && baseSalary > 0 && lastWorkingDay && (
+                <div className="p-3 bg-muted rounded-lg space-y-1.5">
+                  <p className="text-xs font-semibold flex items-center gap-1.5">
+                    <Calculator className="h-3.5 w-3.5" /> Final Pay Estimate
+                  </p>
+                  <div className="space-y-0.5 text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Pro-rated salary ({dayOfMonth}/{daysInLastMonth} days)</span>
+                      <span className="tabular-nums font-medium text-foreground">RM {proratedSalary.toFixed(2)}</span>
+                    </div>
+                    {encashAmt > 0 && (
+                      <div className="flex justify-between">
+                        <span>AL encashment ({encashmentDays} days × RM {dailyRate.toFixed(2)})</span>
+                        <span className="tabular-nums font-medium text-foreground">RM {encashAmt.toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between border-t pt-1 mt-1 font-semibold text-foreground">
+                      <span>Estimated Final Pay</span>
+                      <span className="tabular-nums">RM {totalFinalPay.toFixed(2)}</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">Before EPF, SOCSO, EIS deductions. Process in payroll for final figures.</p>
                 </div>
               )}
-            </div>
-            <div className="space-y-2">
-              <Label>Reason for Leaving</Label>
-              <Textarea value={exitReason} onChange={(e) => setExitReason(e.target.value)} placeholder="e.g. Personal reasons, end of contract..." required />
-            </div>
-            <div className="p-3 bg-destructive/10 rounded-lg text-xs text-destructive flex gap-2">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span>Clock-in will be disabled after the last working day. Login access will be revoked 30 days after exit for document retrieval.</span>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => setStep("choose")}>Back</Button>
-              <Button type="submit" variant="destructive" disabled={resignMutation.isPending}>
-                {resignMutation.isPending ? "Processing..." : `Confirm ${exitType === "resigned" ? "Resignation" : "Termination"}`}
-              </Button>
-            </div>
-          </form>
-        )}
+
+              <div className="p-3 bg-destructive/10 rounded-lg text-xs text-destructive flex gap-2">
+                <AlertTriangle className="h-4 w-4 shrink-0" />
+                <span>Clock-in will be disabled after the last working day. Login access will be revoked 30 days after exit for document retrieval.</span>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button type="button" variant="outline" onClick={() => setStep("choose")}>Back</Button>
+                <Button type="submit" variant="destructive" disabled={resignMutation.isPending}>
+                  {resignMutation.isPending ? "Processing..." : `Confirm ${exitType === "resigned" ? "Resignation" : "Termination"}`}
+                </Button>
+              </div>
+            </form>
+          );
+        })()}
 
         {step === "reactivate" && (
           <form onSubmit={(e) => { e.preventDefault(); reactivateMutation.mutate(); }} className="space-y-4">

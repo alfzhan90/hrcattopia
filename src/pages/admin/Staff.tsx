@@ -17,13 +17,15 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { usePersistentForm } from "@/hooks/use-persistent-form";
-import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2, Users } from "lucide-react";
+import { Plus, Smartphone, RotateCcw, Search, Save, Pencil, ArrowRightLeft, Clock, RefreshCw, Loader2, Users, Wallet, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import EmploymentStatusWizard from "@/components/staff/EmploymentStatusWizard";
 import RoleTimeline from "@/components/staff/RoleTimeline";
+import StaffAllowancesDialog from "@/components/staff/StaffAllowancesDialog";
 import { isHabitualIncident } from "@/lib/attendance-remarks";
 import { AlertOctagon } from "lucide-react";
+import { differenceInYears, differenceInDays, parseISO } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type StaffProfile = Tables<"staff_profiles">;
@@ -61,9 +63,15 @@ const Staff = () => {
     base_rate: string;
     ot_rate_per_hour: string;
     branch_id: string;
+    al_balance: string;
+    mc_balance: string;
+    employment_start_date: string;
+    probation_end_date: string;
+    probation_confirmed: boolean;
   } | null>(null);
   const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
   const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
+  const [allowancesStaff, setAllowancesStaff] = useState<StaffProfile | null>(null);
 
   const { data: staff = [], isLoading } = useQuery({
     queryKey: ["staff"],
@@ -140,6 +148,21 @@ const Staff = () => {
     },
   });
 
+  const confirmProbationMutation = useMutation({
+    mutationFn: async (staffId: string) => {
+      const { error } = await (supabase as any)
+        .from("staff_profiles")
+        .update({ probation_confirmed: true })
+        .eq("id", staffId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["staff"] });
+      toast({ title: "Probation confirmed", description: "Staff member has completed probation." });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
   const updateMutation = useMutation({
     mutationFn: async (values: NonNullable<typeof editForm>) => {
       const original = staff.find((s) => s.id === values.id);
@@ -156,7 +179,12 @@ const Staff = () => {
           base_rate: parseFloat(values.base_rate) || 0,
           ot_rate_per_hour: parseFloat(values.ot_rate_per_hour) || 0,
           branch_id: values.branch_id || null,
-        })
+          al_balance: parseInt(values.al_balance) || 0,
+          mc_balance: parseInt(values.mc_balance) || 0,
+          employment_start_date: values.employment_start_date || null,
+          probation_end_date: values.probation_end_date || null,
+          probation_confirmed: values.probation_confirmed,
+        } as any)
         .eq("id", values.id);
       if (error) throw error;
 
@@ -281,8 +309,31 @@ const Staff = () => {
       base_rate: String(s.base_rate),
       ot_rate_per_hour: String(s.ot_rate_per_hour),
       branch_id: s.branch_id || "",
+      al_balance: String(s.al_balance ?? 0),
+      mc_balance: String(s.mc_balance ?? 0),
+      employment_start_date: (s as any).employment_start_date ?? "",
+      probation_end_date: (s as any).probation_end_date ?? "",
+      probation_confirmed: (s as any).probation_confirmed ?? false,
     });
     setEditDialogOpen(true);
+  };
+
+  const getLeaveEntitlement = (startDate: string) => {
+    if (!startDate) return null;
+    const years = differenceInYears(new Date(), parseISO(startDate));
+    if (years < 2) return { al: 8, mc: 14, label: "< 2 years" };
+    if (years < 5) return { al: 12, mc: 18, label: "2–5 years" };
+    return { al: 16, mc: 22, label: "> 5 years" };
+  };
+
+  const getProbationStatus = (s: StaffProfile) => {
+    const endDate = (s as any).probation_end_date;
+    const confirmed = (s as any).probation_confirmed;
+    if (!endDate || confirmed) return null;
+    const daysLeft = differenceInDays(parseISO(endDate), new Date());
+    if (daysLeft < 0) return { label: "Probation Ended", variant: "secondary" as const, urgent: false };
+    if (daysLeft <= 30) return { label: `Probation ${daysLeft}d left`, variant: "destructive" as const, urgent: true };
+    return { label: "On Probation", variant: "outline" as const, urgent: false };
   };
 
   const filteredStaff = staff.filter(
@@ -415,6 +466,61 @@ const Staff = () => {
           <Input type="number" step="0.01" value={formData.ot_rate_per_hour} onChange={(e) => setFormData({ ...formData, ot_rate_per_hour: e.target.value })} />
         </div>
       </div>
+      {/* Edit-only fields */}
+      {"al_balance" in formData && (
+        <>
+          <div className="border-t pt-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Leave Balances</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>AL Balance (days)</Label>
+                <Input type="number" min="0" value={(formData as any).al_balance} onChange={(e) => setFormData({ ...formData, al_balance: e.target.value } as any)} />
+              </div>
+              <div className="space-y-2">
+                <Label>MC Balance (days)</Label>
+                <Input type="number" min="0" value={(formData as any).mc_balance} onChange={(e) => setFormData({ ...formData, mc_balance: e.target.value } as any)} />
+              </div>
+            </div>
+          </div>
+          <div className="border-t pt-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Employment & Probation</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Employment Start Date</Label>
+                <Input
+                  type="date"
+                  value={(formData as any).employment_start_date}
+                  onChange={(e) => setFormData({ ...formData, employment_start_date: e.target.value } as any)}
+                />
+                {(formData as any).employment_start_date && (() => {
+                  const ent = getLeaveEntitlement((formData as any).employment_start_date);
+                  return ent ? (
+                    <p className="text-xs text-muted-foreground">
+                      Entitlement ({ent.label}): AL {ent.al}d / MC {ent.mc}d
+                    </p>
+                  ) : null;
+                })()}
+              </div>
+              <div className="space-y-2">
+                <Label>Probation End Date</Label>
+                <Input
+                  type="date"
+                  value={(formData as any).probation_end_date}
+                  onChange={(e) => setFormData({ ...formData, probation_end_date: e.target.value } as any)}
+                />
+              </div>
+            </div>
+            {(formData as any).probation_end_date && !(formData as any).probation_confirmed && (
+              <div className="mt-2 flex items-center gap-2">
+                <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                <p className="text-xs text-muted-foreground">
+                  Probation not yet confirmed. Use "Confirm Probation" button after reviewing.
+                </p>
+              </div>
+            )}
+          </div>
+        </>
+      )}
     </>
   );
 
@@ -548,6 +654,18 @@ const Staff = () => {
                         <AlertOctagon className="h-3 w-3" /> Frequent Errors ({incidentCount})
                       </Badge>
                     ) : null}
+                    {(() => {
+                      const ps = getProbationStatus(s);
+                      if (!ps) return null;
+                      return (
+                        <Badge
+                          variant={ps.variant}
+                          className={`ml-2 text-[10px] ${ps.urgent ? "bg-destructive/10 text-destructive border-destructive/30" : "bg-amber-500/10 text-amber-600 border-amber-500/30"}`}
+                        >
+                          {ps.label}
+                        </Badge>
+                      );
+                    })()}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.email || "—"}</TableCell>
                   <TableCell className="text-sm text-muted-foreground">{s.ic_number}</TableCell>
@@ -590,26 +708,73 @@ const Staff = () => {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex gap-1">
-                      <Button size="sm" variant="ghost" onClick={() => openEditDialog(s)} title="Edit staff">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setWizardStaff(s)} title="Change employment status">
-                        <ArrowRightLeft className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)} title="View timeline">
-                        <Clock className="h-4 w-4" />
-                      </Button>
+                    <div className="flex gap-1 flex-wrap">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="ghost" onClick={() => openEditDialog(s)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Edit Staff</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="ghost" onClick={() => setAllowancesStaff(s)}>
+                            <Wallet className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Manage Allowances</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="ghost" onClick={() => setWizardStaff(s)}>
+                            <ArrowRightLeft className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Change Employment Status</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button size="sm" variant="ghost" onClick={() => setTimelineStaff(s)}>
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>View Timeline</TooltipContent>
+                      </Tooltip>
+                      {(() => {
+                        const ps = getProbationStatus(s);
+                        if (!ps) return null;
+                        return (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-green-600 hover:text-green-700"
+                                onClick={() => confirmProbationMutation.mutate(s.id)}
+                                disabled={confirmProbationMutation.isPending}
+                              >
+                                <AlertCircle className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Confirm Probation Complete</TooltipContent>
+                          </Tooltip>
+                        );
+                      })()}
                       {s.is_device_binding_required && s.device_id && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => resetDeviceMutation.mutate(s.id)}
-                          disabled={resetDeviceMutation.isPending}
-                          title="Reset device binding"
-                        >
-                          <RotateCcw className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => resetDeviceMutation.mutate(s.id)}
+                              disabled={resetDeviceMutation.isPending}
+                            >
+                              <RotateCcw className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Reset Device Binding</TooltipContent>
+                        </Tooltip>
                       )}
                     </div>
                   </TableCell>
@@ -637,6 +802,16 @@ const Staff = () => {
           staffName={timelineStaff.name}
           open={!!timelineStaff}
           onOpenChange={(open) => { if (!open) setTimelineStaff(null); }}
+        />
+      )}
+
+      {/* Allowances Dialog */}
+      {allowancesStaff && (
+        <StaffAllowancesDialog
+          staffProfileId={allowancesStaff.id}
+          staffName={allowancesStaff.name}
+          open={!!allowancesStaff}
+          onOpenChange={(open) => { if (!open) setAllowancesStaff(null); }}
         />
       )}
     </div>

@@ -6,9 +6,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { CheckSquare, Check, X, Clock, MapPin } from "lucide-react";
+import { CheckSquare, Check, X, Clock, MapPin, Wallet, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format, addMonths } from "date-fns";
 import type { Tables } from "@/integrations/supabase/types";
 
 type AttendanceLog = Tables<"attendance_logs"> & {
@@ -18,8 +23,8 @@ type AttendanceLog = Tables<"attendance_logs"> & {
 
 type StatusFilter = "pending_approval" | "approved" | "rejected";
 
-const Approvals = () => {
-  const { user, role } = useAuth();
+const AttendanceApprovals = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<StatusFilter>("pending_approval");
@@ -28,8 +33,7 @@ const Approvals = () => {
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["approvals", filter],
     queryFn: async () => {
-      const { data, error } = await (supabase
-        .from("attendance_logs") as any)
+      const { data, error } = await (supabase.from("attendance_logs") as any)
         .select("*")
         .eq("payment_status", filter)
         .order("check_in_time", { ascending: false })
@@ -78,10 +82,7 @@ const Approvals = () => {
     mutationFn: async ({ id, status }: { id: string; status: "approved" | "rejected" }) => {
       const { error } = await supabase
         .from("attendance_logs")
-        .update({
-          payment_status: status,
-          manager_notes: notesDraft[id] ?? null,
-        } as any)
+        .update({ payment_status: status, manager_notes: notesDraft[id] ?? null } as any)
         .eq("id", id);
       if (error) throw error;
     },
@@ -95,14 +96,7 @@ const Approvals = () => {
   });
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <CheckSquare className="h-6 w-6" /> Pay Approvals
-        </h1>
-        <p className="text-muted-foreground">Review emergency check-ins that need manager approval</p>
-      </div>
-
+    <div className="space-y-4">
       <div className="flex gap-2">
         {(["pending_approval", "approved", "rejected"] as StatusFilter[]).map((s) => (
           <Button
@@ -187,7 +181,6 @@ const Approvals = () => {
                       Net hours: {Number(log.net_hours).toFixed(1)} • OT: {Number(log.ot_hours).toFixed(1)}
                     </p>
                   )}
-
                   {isPending ? (
                     <>
                       <Textarea
@@ -228,6 +221,221 @@ const Approvals = () => {
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+const SalaryAdvanceApprovals = () => {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [deductMonths, setDeductMonths] = useState<Record<string, string>>({});
+
+  const nextMonth = format(addMonths(new Date(), 1), "yyyy-MM");
+
+  const { data: advances = [], isLoading } = useQuery({
+    queryKey: ["salary-advances-pending"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("salary_advances")
+        .select("*, staff_profiles(name, staff_id, base_rate)")
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const { data: recentAdvances = [] } = useQuery({
+    queryKey: ["salary-advances-recent"],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from("salary_advances")
+        .select("*, staff_profiles(name, staff_id)")
+        .neq("status", "pending")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: async ({ id, deductMonth }: { id: string; deductMonth: string }) => {
+      const { error } = await (supabase as any)
+        .from("salary_advances")
+        .update({
+          status: "approved",
+          approved_by: user!.id,
+          approved_at: new Date().toISOString(),
+          deduct_month: deductMonth,
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["salary-advances-pending"] });
+      queryClient.invalidateQueries({ queryKey: ["salary-advances-recent"] });
+      toast({ title: "Advance approved", description: "Will be deducted in the specified month." });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await (supabase as any)
+        .from("salary_advances")
+        .update({ status: "rejected", approved_by: user!.id, approved_at: new Date().toISOString() })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["salary-advances-pending"] });
+      queryClient.invalidateQueries({ queryKey: ["salary-advances-recent"] });
+      toast({ title: "Advance rejected" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+  });
+
+  const statusColor = (s: string) => {
+    if (s === "approved") return "bg-emerald-500/10 text-emerald-700 border-emerald-500/20";
+    if (s === "rejected") return "bg-destructive/10 text-destructive border-destructive/20";
+    if (s === "deducted") return "bg-blue-500/10 text-blue-700 border-blue-500/20";
+    return "bg-warning/10 text-warning border-warning/20";
+  };
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+          Pending Requests
+          {advances.length > 0 && <Badge variant="destructive">{advances.length}</Badge>}
+        </h3>
+        {isLoading ? (
+          <div className="space-y-3">{Array.from({ length: 2 }).map((_, i) => <Card key={i}><CardContent className="p-4"><Skeleton className="h-16 w-full" /></CardContent></Card>)}</div>
+        ) : advances.length === 0 ? (
+          <Card>
+            <CardContent className="py-10 text-center">
+              <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                <Wallet className="h-7 w-7 opacity-30" />
+                <p className="font-medium">No pending advance requests.</p>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {advances.map((adv: any) => {
+              const maxAdvance = Number(adv.staff_profiles?.base_rate ?? 0) * 0.5;
+              const pct = maxAdvance > 0 ? Math.round((Number(adv.amount) / maxAdvance) * 100) : 0;
+              const dm = deductMonths[adv.id] ?? nextMonth;
+              return (
+                <Card key={adv.id}>
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <CardTitle className="text-base">{adv.staff_profiles?.name ?? "Unknown"}</CardTitle>
+                        <p className="text-xs text-muted-foreground font-mono">{adv.staff_profiles?.staff_id}</p>
+                      </div>
+                      <Badge className="text-sm font-semibold">RM {Number(adv.amount).toFixed(2)}</Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-sm text-muted-foreground">{adv.reason || "No reason provided."}</p>
+                    {maxAdvance > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {pct}% of base salary (max 50% = RM {maxAdvance.toFixed(2)})
+                        {pct > 50 && <span className="ml-1 text-destructive font-medium">— exceeds limit</span>}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      Requested: {new Date(adv.created_at).toLocaleDateString()}
+                    </p>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Deduct Month</Label>
+                        <Input
+                          type="month"
+                          value={dm}
+                          onChange={(e) => setDeductMonths((prev) => ({ ...prev, [adv.id]: e.target.value }))}
+                          className="h-8 w-40 text-sm"
+                        />
+                      </div>
+                      <div className="flex gap-2 pt-4">
+                        <Button
+                          size="sm"
+                          onClick={() => approveMutation.mutate({ id: adv.id, deductMonth: dm })}
+                          disabled={approveMutation.isPending}
+                        >
+                          <Check className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => rejectMutation.mutate(adv.id)}
+                          disabled={rejectMutation.isPending}
+                        >
+                          <X className="h-4 w-4 mr-1" /> Reject
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <h3 className="text-lg font-semibold mb-3">Recent Decisions</h3>
+        {recentAdvances.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No processed requests yet.</p>
+        ) : (
+          <div className="space-y-2">
+            {recentAdvances.map((adv: any) => (
+              <div key={adv.id} className="flex items-center justify-between p-3 rounded-lg border">
+                <div>
+                  <p className="text-sm font-medium">{adv.staff_profiles?.name}</p>
+                  <p className="text-xs text-muted-foreground tabular-nums">
+                    RM {Number(adv.amount).toFixed(2)}
+                    {adv.deduct_month ? ` • Deduct: ${adv.deduct_month}` : ""}
+                    {" • "}{new Date(adv.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Badge variant="outline" className={statusColor(adv.status)}>
+                  {adv.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Approvals = () => {
+  return (
+    <div className="p-6 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+          <CheckSquare className="h-6 w-6" /> Approvals
+        </h1>
+        <p className="text-muted-foreground">Review attendance pay approvals and salary advance requests</p>
+      </div>
+
+      <Tabs defaultValue="attendance">
+        <TabsList>
+          <TabsTrigger value="attendance">Attendance Pay</TabsTrigger>
+          <TabsTrigger value="advances">Salary Advances</TabsTrigger>
+        </TabsList>
+        <TabsContent value="attendance" className="mt-4">
+          <AttendanceApprovals />
+        </TabsContent>
+        <TabsContent value="advances" className="mt-4">
+          <SalaryAdvanceApprovals />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

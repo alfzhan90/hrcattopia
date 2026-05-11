@@ -103,6 +103,28 @@ const PayrollProcessing = () => {
         .eq("status", "approved" as any);
       if (leaveError) throw leaveError;
 
+      // Fetch active allowances for all staff
+      const { data: allAllowances } = await (supabase as any)
+        .from("staff_allowances")
+        .select("staff_profile_id, amount")
+        .eq("is_active", true);
+      const allowanceMap: Record<string, number> = {};
+      for (const a of allAllowances ?? []) {
+        allowanceMap[a.staff_profile_id] = (allowanceMap[a.staff_profile_id] ?? 0) + Number(a.amount);
+      }
+
+      // Fetch approved salary advances to deduct this month
+      const { data: advances } = await (supabase as any)
+        .from("salary_advances")
+        .select("id, staff_profile_id, amount")
+        .eq("status", "approved")
+        .eq("deduct_month", selectedMonth);
+      const advanceMap: Record<string, number> = {};
+      for (const adv of advances ?? []) {
+        advanceMap[adv.staff_profile_id] = (advanceMap[adv.staff_profile_id] ?? 0) + Number(adv.amount);
+      }
+      const advanceIds: string[] = (advances ?? []).map((a: any) => a.id);
+
       const holidayDates = new Map(holidays.map((h: any) => [h.date, h.multiplier]));
 
       // Calculate working days in pay period (exclude weekends & public holidays)
@@ -220,20 +242,22 @@ const PayrollProcessing = () => {
           }
         }
 
-        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim - uplDeduction - lateDeduction) * 100) / 100;
+        const staffAllowance = allowanceMap[s.id] ?? 0;
+        const staffAdvance = advanceMap[s.id] ?? 0;
+        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim + staffAllowance - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
         const socso = calcSocso(grossPay);
         const eis = calcEis(grossPay);
-        const netPay = Math.round((grossPay - epfEmployee - socso.employee - eis.employee) * 100) / 100;
+        const netPay = Math.round((grossPay - epfEmployee - socso.employee - eis.employee - staffAdvance) * 100) / 100;
 
         runs.push({
           month: monthDate,
           staff_profile_id: s.id,
           basic_pay: basicPay,
           ot_pay: otPay,
-          allowance: 0,
+          allowance: staffAllowance,
           commission: 0,
           holiday_pay: holidayPay,
           mileage_claim: mileageClaim,
@@ -247,6 +271,7 @@ const PayrollProcessing = () => {
           pcb: 0,
           upl_deduction: uplDeduction,
           late_deduction: lateDeduction,
+          advance_deduction: staffAdvance,
           net_pay: netPay,
           status: "draft" as const,
           _summary: { daysWorked, al: alDays, mc: mcDays, el: elDays, upl: explicitUplDays, mia: miaDays, lateCount, lateMinutes: totalLateMinutes, lateDeduction },
@@ -295,7 +320,7 @@ const PayrollProcessing = () => {
 
       // Upsert
       for (const run of runs) {
-        const { _summary, ...dbRun } = run as any;
+        const { _summary, advance_deduction, ...dbRun } = run as any;
         const { data: existing } = await supabase
           .from("payroll_runs")
           .select("id")
@@ -309,7 +334,15 @@ const PayrollProcessing = () => {
           await supabase.from("payroll_runs").insert(dbRun);
         }
       }
-      
+
+      // Mark deducted advances
+      if (advanceIds.length > 0) {
+        await (supabase as any)
+          .from("salary_advances")
+          .update({ status: "deducted" })
+          .in("id", advanceIds);
+      }
+
       return { summaryMap, outOfShiftItems };
     },
     onSuccess: ({ summaryMap, outOfShiftItems }) => {

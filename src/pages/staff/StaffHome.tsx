@@ -8,7 +8,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText, CalendarDays } from "lucide-react";
+import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText, CalendarDays, Wallet } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { haversineDistance, generateDeviceFingerprint, isSameDevice, clearDeviceToken, getCurrentPosition } from "@/lib/geo";
 import { useSmartNotifications } from "@/hooks/use-smart-notifications";
 import { format } from "date-fns";
@@ -55,6 +58,9 @@ const StaffHome = () => {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
   const [resolvedDeviceId, setResolvedDeviceId] = useState<string | null>(null);
+  const [showAdvanceForm, setShowAdvanceForm] = useState(false);
+  const [advanceAmount, setAdvanceAmount] = useState("");
+  const [advanceReason, setAdvanceReason] = useState("");
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["my-profile", user?.id],
@@ -175,6 +181,48 @@ const StaffHome = () => {
     },
     enabled: !!profile,
     staleTime: 1000 * 60 * 10, // shifts change rarely during the day
+  });
+
+  const { data: pendingAdvance } = useQuery({
+    queryKey: ["my-advance", profile?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("salary_advances")
+        .select("id, amount, status, created_at")
+        .eq("staff_profile_id", profile!.id)
+        .in("status", ["pending", "approved"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data ?? null;
+    },
+    enabled: !!profile && profile.employment_type !== "Freelancer",
+    staleTime: 1000 * 60 * 5,
+  });
+
+  const submitAdvanceMutation = useMutation({
+    mutationFn: async () => {
+      if (!profile || !user) throw new Error("Not authenticated");
+      const amount = parseFloat(advanceAmount);
+      if (!amount || amount <= 0) throw new Error("Invalid amount");
+      const maxAdvance = Number(profile.base_rate) * 0.5;
+      if (amount > maxAdvance) throw new Error(`Maximum advance is RM${maxAdvance.toFixed(2)} (50% of base salary)`);
+      const { error } = await (supabase as any).from("salary_advances").insert({
+        staff_profile_id: profile.id,
+        requested_by: user.id,
+        amount,
+        reason: advanceReason.trim() || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["my-advance"] });
+      setShowAdvanceForm(false);
+      setAdvanceAmount("");
+      setAdvanceReason("");
+      toast({ title: "Request submitted", description: "Your advance request has been sent to admin for approval." });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   // Check for missed clock-out from previous days.
@@ -668,6 +716,74 @@ const StaffHome = () => {
                 </div>
               );
             })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Salary Advance — not for freelancers */}
+      {profile.employment_type !== "Freelancer" && (
+        <Card className="rounded-xl">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <Wallet className="h-4 w-4 text-primary" /> Salary Advance
+            </p>
+            {pendingAdvance ? (
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    {pendingAdvance.status === "pending" ? "Request under review" : "Request approved — will be deducted next payroll"}
+                  </p>
+                  <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
+                    RM {Number(pendingAdvance.amount).toFixed(2)} • {new Date(pendingAdvance.created_at).toLocaleDateString()}
+                  </p>
+                </div>
+                <Badge className={pendingAdvance.status === "approved" ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" : "bg-amber-500/10 text-amber-700 border-amber-500/30"}>
+                  {pendingAdvance.status}
+                </Badge>
+              </div>
+            ) : showAdvanceForm ? (
+              <div className="space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Amount (RM)</Label>
+                    <Input
+                      type="number"
+                      step="50"
+                      min="50"
+                      placeholder="e.g. 500"
+                      value={advanceAmount}
+                      onChange={(e) => setAdvanceAmount(e.target.value)}
+                    />
+                    {profile.base_rate > 0 && (
+                      <p className="text-[10px] text-muted-foreground">Max: RM {(Number(profile.base_rate) * 0.5).toFixed(0)}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Reason</Label>
+                    <Input
+                      placeholder="e.g. Emergency"
+                      value={advanceReason}
+                      onChange={(e) => setAdvanceReason(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    onClick={() => submitAdvanceMutation.mutate()}
+                    disabled={!advanceAmount || submitAdvanceMutation.isPending}
+                  >
+                    {submitAdvanceMutation.isPending ? "Submitting..." : "Submit Request"}
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAdvanceForm(false)}>Cancel</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">Request up to 50% of your monthly salary</p>
+                <Button size="sm" variant="outline" onClick={() => setShowAdvanceForm(true)}>Request Advance</Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
