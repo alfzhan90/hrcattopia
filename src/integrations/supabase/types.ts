@@ -506,6 +506,56 @@ export type Database = {
           },
         ]
       }
+      salary_advances: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          deduct_month: string | null
+          id: string
+          reason: string | null
+          requested_by: string
+          staff_profile_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deduct_month?: string | null
+          id?: string
+          reason?: string | null
+          requested_by: string
+          staff_profile_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deduct_month?: string | null
+          id?: string
+          reason?: string | null
+          requested_by?: string
+          staff_profile_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_advances_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           branch_id: string
@@ -560,6 +610,44 @@ export type Database = {
           },
         ]
       }
+      staff_allowances: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          staff_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          staff_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          staff_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_allowances_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_profiles: {
         Row: {
           access_revoke_date: string | null
@@ -571,6 +659,7 @@ export type Database = {
           created_at: string
           device_id: string | null
           email: string | null
+          employment_start_date: string | null
           employment_status: string
           employment_type: Database["public"]["Enums"]["employment_type"]
           exit_date: string | null
@@ -587,6 +676,8 @@ export type Database = {
           passport_number: string | null
           phone_number: string | null
           privacy_tracking_enabled: boolean
+          probation_confirmed: boolean
+          probation_end_date: string | null
           socso_number: string | null
           staff_id: string
           tax_reference_number: string | null
@@ -603,6 +694,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_start_date?: string | null
           employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
           exit_date?: string | null
@@ -619,6 +711,8 @@ export type Database = {
           passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
+          probation_confirmed?: boolean
+          probation_end_date?: string | null
           socso_number?: string | null
           staff_id: string
           tax_reference_number?: string | null
@@ -635,6 +729,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_start_date?: string | null
           employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
           exit_date?: string | null
@@ -651,6 +746,8 @@ export type Database = {
           passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
+          probation_confirmed?: boolean
+          probation_end_date?: string | null
           socso_number?: string | null
           staff_id?: string
           tax_reference_number?: string | null
