@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import {
   Building2, Users, LogOut, ClipboardList, DollarSign, Settings,
   FileSpreadsheet, LayoutDashboard, UserCheck, Plus, UserPlus, Clock, Menu, X,
-  CalendarDays, CheckSquare,
+  CalendarDays, CheckSquare, Megaphone,
 } from "lucide-react";
 import { useState } from "react";
 import {
@@ -24,6 +24,7 @@ const adminNavItems = [
   { to: "/admin/schedules", icon: CalendarDays, label: "Shift Planner" },
   { to: "/admin/approvals", icon: CheckSquare, label: "Approvals" },
   { to: "/admin/payroll", icon: DollarSign, label: "Payroll" },
+  { to: "/admin/hr", icon: Megaphone, label: "HR" },
   { to: "/admin/freelancers", icon: UserCheck, label: "Freelancers" },
   { to: "/admin/management", icon: LayoutDashboard, label: "Management" },
 ];

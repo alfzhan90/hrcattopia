@@ -108,6 +108,16 @@ const PayrollProcessing = () => {
         .from("staff_allowances")
         .select("staff_profile_id, amount")
         .eq("is_active", true);
+
+      // Fetch one-time bonuses for this payroll month
+      const { data: allBonuses } = await (supabase as any)
+        .from("payroll_runs")
+        .select("staff_profile_id, bonus")
+        .eq("month", monthDate);
+      const bonusMap: Record<string, number> = {};
+      for (const b of allBonuses ?? []) {
+        if (Number(b.bonus) > 0) bonusMap[b.staff_profile_id] = Number(b.bonus);
+      }
       const allowanceMap: Record<string, number> = {};
       for (const a of allAllowances ?? []) {
         allowanceMap[a.staff_profile_id] = (allowanceMap[a.staff_profile_id] ?? 0) + Number(a.amount);
@@ -244,7 +254,8 @@ const PayrollProcessing = () => {
 
         const staffAllowance = allowanceMap[s.id] ?? 0;
         const staffAdvance = advanceMap[s.id] ?? 0;
-        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim + staffAllowance - uplDeduction - lateDeduction) * 100) / 100;
+        const staffBonus = bonusMap[s.id] ?? 0;
+        const grossPay = Math.round((basicPay + otPay + holidayPay + mileageClaim + staffAllowance + staffBonus - uplDeduction - lateDeduction) * 100) / 100;
 
         const epfEmployee = calcEpfEmployee(grossPay);
         const epfEmployer = calcEpfEmployer(grossPay);
@@ -258,6 +269,7 @@ const PayrollProcessing = () => {
           basic_pay: basicPay,
           ot_pay: otPay,
           allowance: staffAllowance,
+          bonus: staffBonus,
           commission: 0,
           holiday_pay: holidayPay,
           mileage_claim: mileageClaim,
@@ -423,7 +435,7 @@ const PayrollProcessing = () => {
 
   const updateRunMutation = useMutation({
     mutationFn: async (run: any) => {
-      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction) - Number(run.late_deduction ?? 0);
+      const grossPay = Number(run.basic_pay) + Number(run.ot_pay) + Number(run.allowance) + Number(run.bonus ?? 0) + Number(run.commission) + Number(run.holiday_pay) - Number(run.upl_deduction) - Number(run.late_deduction ?? 0);
       const epfEmployee = calcEpfEmployee(grossPay);
       const epfEmployer = calcEpfEmployer(grossPay);
       const socso = calcSocso(grossPay);
@@ -432,6 +444,7 @@ const PayrollProcessing = () => {
 
       const { error } = await supabase.from("payroll_runs").update({
         allowance: Number(run.allowance),
+        bonus: Number(run.bonus ?? 0),
         commission: Number(run.commission),
         pcb: Number(run.pcb),
         gross_pay: Math.round(grossPay * 100) / 100,
@@ -841,11 +854,19 @@ const PayrollProcessing = () => {
           <DialogHeader><DialogTitle>Edit Payroll — {editRun && getStaffName(editRun.staff_profile_id)}</DialogTitle></DialogHeader>
           {editRun && (
             <div className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Allowance (RM)</Label>
                   <Input type="number" step="0.01" value={editRun.allowance} onChange={(e) => setEditRun({ ...editRun, allowance: e.target.value })} />
+                  <p className="text-xs text-muted-foreground">Auto-filled from staff allowances</p>
                 </div>
+                <div className="space-y-2">
+                  <Label>Bonus (RM)</Label>
+                  <Input type="number" step="0.01" value={editRun.bonus ?? 0} onChange={(e) => setEditRun({ ...editRun, bonus: e.target.value })} />
+                  <p className="text-xs text-muted-foreground">One-time: annual, festive, performance</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Commission (RM)</Label>
                   <Input type="number" step="0.01" value={editRun.commission} onChange={(e) => setEditRun({ ...editRun, commission: e.target.value })} />

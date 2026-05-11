@@ -8,7 +8,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText, CalendarDays, Wallet } from "lucide-react";
+import { LogIn, LogOut, MapPin, ShieldAlert, Clock, Calendar, TrendingUp, FileText, CalendarDays, Wallet, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -181,6 +181,48 @@ const StaffHome = () => {
     },
     enabled: !!profile,
     staleTime: 1000 * 60 * 10, // shifts change rarely during the day
+  });
+
+  const { data: announcements = [] } = useQuery({
+    queryKey: ["announcements-staff"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("announcements")
+        .select("id, title, body, created_at")
+        .eq("is_active", true)
+        .or("expires_at.is.null,expires_at.gte." + new Date().toISOString().slice(0, 10))
+        .order("created_at", { ascending: false })
+        .limit(3);
+      return data ?? [];
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  const { data: incomingSwaps = [] } = useQuery({
+    queryKey: ["incoming-swaps", profile?.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("shift_swaps")
+        .select("id, message, created_at, requester_profile_id, requester_schedule_id, staff_profiles!shift_swaps_requester_profile_id_fkey(name), schedules!shift_swaps_requester_schedule_id_fkey(date, start_time, end_time)")
+        .eq("target_profile_id", profile!.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+      return data ?? [];
+    },
+    enabled: !!profile,
+    staleTime: 1000 * 60 * 2,
+  });
+
+  const respondSwapMutation = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "accepted" | "rejected" }) => {
+      const { error } = await (supabase as any).from("shift_swaps").update({ status }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_,  vars) => {
+      queryClient.invalidateQueries({ queryKey: ["incoming-swaps"] });
+      toast({ title: vars.status === "accepted" ? "Swap accepted" : "Swap declined" });
+    },
+    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
   });
 
   const { data: pendingAdvance } = useQuery({
@@ -665,6 +707,20 @@ const StaffHome = () => {
         <BranchVisitLogger profileId={profile.id} />
       )}
 
+      {/* Announcements */}
+      {announcements.length > 0 && (
+        <div className="space-y-2">
+          {announcements.map((a: any) => (
+            <Card key={a.id} className="rounded-xl border-l-4 border-l-primary/60">
+              <CardContent className="p-3">
+                <p className="text-sm font-semibold">{a.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{a.body}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3">
         <Card className="rounded-xl border-t-2 border-t-primary/40">
@@ -713,6 +769,45 @@ const StaffHome = () => {
                   <span className="tabular-nums text-xs font-mono text-muted-foreground">
                     {s.start_time.slice(0, 5)} – {s.end_time.slice(0, 5)}
                   </span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Incoming Shift Swap Requests */}
+      {incomingSwaps.length > 0 && (
+        <Card className="rounded-xl border-primary/30">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-primary" /> Shift Swap Requests
+              <Badge variant="destructive" className="text-[10px] ml-auto">{incomingSwaps.length}</Badge>
+            </p>
+            {incomingSwaps.map((swap: any) => {
+              const sched = swap["schedules!shift_swaps_requester_schedule_id_fkey"];
+              const requester = swap["staff_profiles!shift_swaps_requester_profile_id_fkey"];
+              return (
+                <div key={swap.id} className="flex items-center justify-between gap-2 p-2.5 rounded-lg bg-muted/40">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium">{requester?.name ?? "Colleague"} wants to swap</p>
+                    {sched && (
+                      <p className="text-xs text-muted-foreground tabular-nums">
+                        {sched.date} • {sched.start_time?.slice(0,5)}–{sched.end_time?.slice(0,5)}
+                      </p>
+                    )}
+                    {swap.message && <p className="text-xs text-muted-foreground italic">"{swap.message}"</p>}
+                  </div>
+                  <div className="flex gap-1 shrink-0">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                      onClick={() => respondSwapMutation.mutate({ id: swap.id, status: "accepted" })}>
+                      <Check className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive"
+                      onClick={() => respondSwapMutation.mutate({ id: swap.id, status: "rejected" })}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               );
             })}

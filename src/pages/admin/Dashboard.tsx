@@ -4,8 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Users, Clock, CalendarOff, AlertTriangle, TrendingUp, CheckCircle2 } from "lucide-react";
-import { format, subDays } from "date-fns";
+import { format, subDays, eachDayOfInterval } from "date-fns";
 import { getPayPeriod } from "@/lib/payroll";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, PieChart, Pie, Cell, Legend } from "recharts";
 
 const Dashboard = () => {
   const today = format(new Date(), "yyyy-MM-dd");
@@ -130,6 +131,51 @@ const Dashboard = () => {
       return m;
     },
   });
+
+  // 7-day attendance trend
+  const { data: weekTrend = [] } = useQuery({
+    queryKey: ["dash-week-trend"],
+    queryFn: async () => {
+      const days = eachDayOfInterval({ start: subDays(new Date(), 6), end: new Date() });
+      const since = format(subDays(new Date(), 6), "yyyy-MM-dd");
+      const { data } = await supabase.from("attendance_logs").select("check_in_time, status").gte("check_in_time", since);
+      return days.map((d) => {
+        const ds = format(d, "yyyy-MM-dd");
+        const dayLogs = (data ?? []).filter((l) => l.check_in_time.startsWith(ds));
+        return { day: format(d, "EEE"), total: dayLogs.length, late: dayLogs.filter((l) => l.status === "late").length };
+      });
+    },
+    staleTime: 1000 * 60 * 10,
+  });
+
+  // Leave type breakdown — current month
+  const { data: leaveBreakdown = [] } = useQuery({
+    queryKey: ["dash-leave-breakdown", currentMonth],
+    queryFn: async () => {
+      const { data } = await supabase.from("leave_records").select("leave_type")
+        .gte("date", `${currentMonth}-01`).lte("date", `${currentMonth}-31`).eq("status", "approved" as any);
+      const counts: Record<string, number> = {};
+      for (const r of data ?? []) counts[r.leave_type] = (counts[r.leave_type] ?? 0) + 1;
+      return Object.entries(counts).map(([type, count]) => ({ type, count }));
+    },
+    staleTime: 1000 * 60 * 15,
+  });
+
+  // Headcount summary
+  const { data: headcount } = useQuery({
+    queryKey: ["dash-headcount"],
+    queryFn: async () => {
+      const { data } = await supabase.from("staff_profiles").select("employment_type, employment_status");
+      const all = data ?? [];
+      const active = all.filter((s) => (s as any).employment_status === "active" || !(s as any).employment_status);
+      const byType: Record<string, number> = {};
+      for (const s of active) byType[s.employment_type] = (byType[s.employment_type] ?? 0) + 1;
+      return { total: active.length, byType };
+    },
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const LEAVE_COLORS = ["hsl(var(--primary))", "#10b981", "#f59e0b", "#ef4444"];
 
   const kpis = [
     {
@@ -342,6 +388,68 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Analytics Row */}
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* 7-day attendance trend */}
+        <Card className="rounded-xl lg:col-span-2">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <TrendingUp className="h-4 w-4 text-primary" /> Attendance — Last 7 Days
+            </p>
+            <ResponsiveContainer width="100%" height={160}>
+              <BarChart data={weekTrend} barCategoryGap="30%">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="day" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                <Bar dataKey="total" name="Check-ins" fill="hsl(var(--primary))" radius={[4,4,0,0]} opacity={0.85} />
+                <Bar dataKey="late" name="Late" fill="#ef4444" radius={[4,4,0,0]} opacity={0.7} />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Leave breakdown */}
+        <Card className="rounded-xl">
+          <CardContent className="p-4 space-y-3">
+            <p className="text-sm font-semibold flex items-center gap-1.5">
+              <CalendarOff className="h-4 w-4 text-primary" /> Leave This Month
+            </p>
+            {leaveBreakdown.length === 0 ? (
+              <p className="text-sm text-muted-foreground pt-4">No approved leaves.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={leaveBreakdown} dataKey="count" nameKey="type" cx="50%" cy="50%" outerRadius={55} paddingAngle={3}>
+                    {leaveBreakdown.map((_, i) => <Cell key={i} fill={LEAVE_COLORS[i % LEAVE_COLORS.length]} />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Headcount summary */}
+      {headcount && (
+        <Card className="rounded-xl">
+          <CardContent className="p-4">
+            <p className="text-sm font-semibold mb-3 flex items-center gap-1.5">
+              <Users className="h-4 w-4 text-primary" /> Headcount — {headcount.total} Active Staff
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(headcount.byType).map(([type, count]) => (
+                <Badge key={type} variant="outline" className="text-sm px-3 py-1">
+                  {type} <span className="font-bold ml-1.5 tabular-nums">{count}</span>
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

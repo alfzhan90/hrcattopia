@@ -20,6 +20,7 @@ import Dashboard from "@/pages/admin/Dashboard";
 import Freelancers from "@/pages/admin/Freelancers";
 import Schedules from "@/pages/admin/Schedules";
 import Approvals from "@/pages/admin/Approvals";
+import HR from "@/pages/admin/HR";
 import StaffHome from "@/pages/staff/StaffHome";
 import StaffLogs from "@/pages/staff/StaffLogs";
 import StaffLeave from "@/pages/staff/StaffLeave";
@@ -97,6 +98,7 @@ const AppRoutes = () => (
       <Route path="freelancers" element={<Freelancers />} />
       <Route path="schedules" element={<Schedules />} />
       <Route path="approvals" element={<Approvals />} />
+      <Route path="hr" element={<HR />} />
       <Route path="management" element={<Management />} />
     </Route>
     <Route path="*" element={<NotFound />} />
