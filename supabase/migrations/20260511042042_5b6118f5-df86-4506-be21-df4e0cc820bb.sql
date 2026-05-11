@@ -1,0 +1,1 @@
+ALTER TABLE public.attendance_logs ADD COLUMN IF NOT EXISTS ot_approved boolean NOT NULL DEFAULT false;

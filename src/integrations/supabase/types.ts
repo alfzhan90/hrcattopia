@@ -56,6 +56,7 @@ export type Database = {
           late_waived: boolean
           manager_notes: string | null
           net_hours: number
+          ot_approved: boolean
           ot_hours: number
           payment_status: Database["public"]["Enums"]["payment_status"]
           regular_hours: number
@@ -75,6 +76,7 @@ export type Database = {
           late_waived?: boolean
           manager_notes?: string | null
           net_hours?: number
+          ot_approved?: boolean
           ot_hours?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
@@ -94,6 +96,7 @@ export type Database = {
           late_waived?: boolean
           manager_notes?: string | null
           net_hours?: number
+          ot_approved?: boolean
           ot_hours?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
