@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       area_manager_branches: {
         Row: {
           branch_id: string
@@ -234,6 +267,44 @@ export type Database = {
         }
         Relationships: []
       }
+      disciplinary_records: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          issued_by: string | null
+          issued_date: string
+          staff_profile_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          staff_profile_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          staff_profile_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disciplinary_records_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       freelancer_invoices: {
         Row: {
           created_at: string
@@ -346,10 +417,52 @@ export type Database = {
           },
         ]
       }
+      onboarding_tasks: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          sort_order: number
+          staff_profile_id: string
+          task_name: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          staff_profile_id: string
+          task_name: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          staff_profile_id?: string
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tasks_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_runs: {
         Row: {
           allowance: number
           basic_pay: number
+          bonus: number
           commission: number
           created_at: string
           eis_employee: number
@@ -375,6 +488,7 @@ export type Database = {
         Insert: {
           allowance?: number
           basic_pay?: number
+          bonus?: number
           commission?: number
           created_at?: string
           eis_employee?: number
@@ -400,6 +514,7 @@ export type Database = {
         Update: {
           allowance?: number
           basic_pay?: number
+          bonus?: number
           commission?: number
           created_at?: string
           eis_employee?: number
@@ -606,6 +721,71 @@ export type Database = {
             columns: ["staff_profile_id"]
             isOneToOne: false
             referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shift_swaps: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          requester_profile_id: string
+          requester_schedule_id: string
+          status: string
+          target_profile_id: string
+          target_schedule_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          requester_profile_id: string
+          requester_schedule_id: string
+          status?: string
+          target_profile_id: string
+          target_schedule_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          requester_profile_id?: string
+          requester_schedule_id?: string
+          status?: string
+          target_profile_id?: string
+          target_schedule_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_swaps_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_requester_schedule_id_fkey"
+            columns: ["requester_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_target_schedule_id_fkey"
+            columns: ["target_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
             referencedColumns: ["id"]
           },
         ]
