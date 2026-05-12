@@ -159,6 +159,9 @@ const Staff = () => {
           base_rate: parseFloat(values.base_rate) || 0,
           ot_rate_per_hour: parseFloat(values.ot_rate_per_hour) || 0,
           branch_id: values.branch_id || null,
+          employment_start_date: values.employment_start_date || null,
+          probation_end_date: values.probation_end_date || null,
+          probation_confirmed: values.probation_confirmed,
         })
         .eq("id", values.id);
       if (error) throw error;
