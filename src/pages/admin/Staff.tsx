@@ -61,6 +61,9 @@ const Staff = () => {
     base_rate: string;
     ot_rate_per_hour: string;
     branch_id: string;
+    employment_start_date: string;
+    probation_end_date: string;
+    probation_confirmed: boolean;
   } | null>(null);
   const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
   const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
