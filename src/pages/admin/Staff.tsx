@@ -473,6 +473,34 @@ const Staff = () => {
           {editForm && (
             <form onSubmit={handleEditSubmit} className="space-y-4">
               {staffFormFields(editForm, setEditForm, false, true)}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Employment Start Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.employment_start_date}
+                    onChange={(e) => setEditForm({ ...editForm, employment_start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Probation End Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.probation_end_date}
+                    onChange={(e) => setEditForm({ ...editForm, probation_end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Switch
+                  checked={editForm.probation_confirmed}
+                  onCheckedChange={(v) => setEditForm({ ...editForm, probation_confirmed: v })}
+                />
+                <div className="flex-1">
+                  <Label className="cursor-pointer">Probation Confirmed</Label>
+                  <p className="text-xs text-muted-foreground">Toggle on once the staff has passed probation.</p>
+                </div>
+              </div>
               <div className="flex items-center gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditForm(null); }}>Cancel</Button>
                 <Button type="submit" disabled={updateMutation.isPending}>
