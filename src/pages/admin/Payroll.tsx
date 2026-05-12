@@ -8,6 +8,8 @@ import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
 import BulkPayrollImporter from "@/components/payroll/BulkPayrollImporter";
 import YtdSummary from "@/components/payroll/YtdSummary";
 import TaxCompliance from "@/components/payroll/TaxCompliance";
+import StaffAllowances from "@/components/payroll/StaffAllowances";
+import SalaryAdvances from "@/components/payroll/SalaryAdvances";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
