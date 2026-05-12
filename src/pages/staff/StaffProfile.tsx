@@ -92,6 +92,16 @@ const StaffProfile = () => {
     { icon: CreditCard, label: "SOCSO No.", value: profile.socso_number || "—" },
     { icon: Building2, label: "Branch", value: branch?.name || "—" },
     { icon: User, label: "Employment", value: profile.employment_type },
+    { icon: User, label: "Start Date", value: profile.employment_start_date || "—" },
+    {
+      icon: User,
+      label: "Probation",
+      value: profile.probation_confirmed
+        ? "Confirmed"
+        : profile.probation_end_date
+          ? `Until ${profile.probation_end_date}`
+          : "—",
+    },
     { icon: CreditCard, label: "Base Rate", value: `RM ${Number(profile.base_rate).toFixed(2)}`, mono: true },
   ];
 
