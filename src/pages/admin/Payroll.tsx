@@ -26,6 +26,8 @@ const Payroll = () => {
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
           <TabsTrigger value="ytd">YTD Summary</TabsTrigger>
           <TabsTrigger value="tax">Tax & Compliance</TabsTrigger>
+          <TabsTrigger value="allowances">Allowances</TabsTrigger>
+          <TabsTrigger value="advances">Advances</TabsTrigger>
           <TabsTrigger value="import">Import History</TabsTrigger>
           <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
