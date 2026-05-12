@@ -284,6 +284,9 @@ const Staff = () => {
       base_rate: String(s.base_rate),
       ot_rate_per_hour: String(s.ot_rate_per_hour),
       branch_id: s.branch_id || "",
+      employment_start_date: s.employment_start_date || "",
+      probation_end_date: s.probation_end_date || "",
+      probation_confirmed: s.probation_confirmed ?? false,
     });
     setEditDialogOpen(true);
   };
