@@ -61,6 +61,9 @@ const Staff = () => {
     base_rate: string;
     ot_rate_per_hour: string;
     branch_id: string;
+    employment_start_date: string;
+    probation_end_date: string;
+    probation_confirmed: boolean;
   } | null>(null);
   const [wizardStaff, setWizardStaff] = useState<StaffProfile | null>(null);
   const [timelineStaff, setTimelineStaff] = useState<StaffProfile | null>(null);
@@ -156,6 +159,9 @@ const Staff = () => {
           base_rate: parseFloat(values.base_rate) || 0,
           ot_rate_per_hour: parseFloat(values.ot_rate_per_hour) || 0,
           branch_id: values.branch_id || null,
+          employment_start_date: values.employment_start_date || null,
+          probation_end_date: values.probation_end_date || null,
+          probation_confirmed: values.probation_confirmed,
         })
         .eq("id", values.id);
       if (error) throw error;
@@ -281,6 +287,9 @@ const Staff = () => {
       base_rate: String(s.base_rate),
       ot_rate_per_hour: String(s.ot_rate_per_hour),
       branch_id: s.branch_id || "",
+      employment_start_date: s.employment_start_date || "",
+      probation_end_date: s.probation_end_date || "",
+      probation_confirmed: s.probation_confirmed ?? false,
     });
     setEditDialogOpen(true);
   };
@@ -464,6 +473,34 @@ const Staff = () => {
           {editForm && (
             <form onSubmit={handleEditSubmit} className="space-y-4">
               {staffFormFields(editForm, setEditForm, false, true)}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Employment Start Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.employment_start_date}
+                    onChange={(e) => setEditForm({ ...editForm, employment_start_date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Probation End Date</Label>
+                  <Input
+                    type="date"
+                    value={editForm.probation_end_date}
+                    onChange={(e) => setEditForm({ ...editForm, probation_end_date: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-md border p-3">
+                <Switch
+                  checked={editForm.probation_confirmed}
+                  onCheckedChange={(v) => setEditForm({ ...editForm, probation_confirmed: v })}
+                />
+                <div className="flex-1">
+                  <Label className="cursor-pointer">Probation Confirmed</Label>
+                  <p className="text-xs text-muted-foreground">Toggle on once the staff has passed probation.</p>
+                </div>
+              </div>
               <div className="flex items-center gap-2 justify-end">
                 <Button type="button" variant="outline" onClick={() => { setEditDialogOpen(false); setEditForm(null); }}>Cancel</Button>
                 <Button type="submit" disabled={updateMutation.isPending}>
@@ -539,6 +576,11 @@ const Staff = () => {
                     <span>{s.name}</span>
                     {s.employment_status === "resigned" || s.employment_status === "terminated" ? (
                       <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
+                    ) : null}
+                    {!s.probation_confirmed && s.employment_start_date ? (
+                      <Badge variant="outline" className="ml-2 text-[10px] border-amber-500/40 text-amber-600 bg-amber-500/10">
+                        On Probation
+                      </Badge>
                     ) : null}
                     {isHabitual ? (
                       <Badge

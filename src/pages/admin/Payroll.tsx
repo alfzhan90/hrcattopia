@@ -8,6 +8,8 @@ import LeaveApprovalInbox from "@/components/leave/LeaveApprovalInbox";
 import BulkPayrollImporter from "@/components/payroll/BulkPayrollImporter";
 import YtdSummary from "@/components/payroll/YtdSummary";
 import TaxCompliance from "@/components/payroll/TaxCompliance";
+import StaffAllowances from "@/components/payroll/StaffAllowances";
+import SalaryAdvances from "@/components/payroll/SalaryAdvances";
 
 const Payroll = () => {
   const [tab, setTab] = useState("payroll");
@@ -24,6 +26,8 @@ const Payroll = () => {
           <TabsTrigger value="payroll">Payroll</TabsTrigger>
           <TabsTrigger value="ytd">YTD Summary</TabsTrigger>
           <TabsTrigger value="tax">Tax & Compliance</TabsTrigger>
+          <TabsTrigger value="allowances">Allowances</TabsTrigger>
+          <TabsTrigger value="advances">Advances</TabsTrigger>
           <TabsTrigger value="import">Import History</TabsTrigger>
           <TabsTrigger value="approval">Leave Approval</TabsTrigger>
           <TabsTrigger value="attendance">Time Correction</TabsTrigger>
@@ -42,6 +46,12 @@ const Payroll = () => {
         </TabsContent>
         <TabsContent value="tax" className="mt-4">
           <TaxCompliance />
+        </TabsContent>
+        <TabsContent value="allowances" className="mt-4">
+          <StaffAllowances />
+        </TabsContent>
+        <TabsContent value="advances" className="mt-4">
+          <SalaryAdvances />
         </TabsContent>
         <TabsContent value="approval" className="mt-4">
           <LeaveApprovalInbox />
