@@ -577,6 +577,11 @@ const Staff = () => {
                     {s.employment_status === "resigned" || s.employment_status === "terminated" ? (
                       <Badge variant="destructive" className="ml-2 text-[10px]">Exited</Badge>
                     ) : null}
+                    {!s.probation_confirmed && s.employment_start_date ? (
+                      <Badge variant="outline" className="ml-2 text-[10px] border-amber-500/40 text-amber-600 bg-amber-500/10">
+                        On Probation
+                      </Badge>
+                    ) : null}
                     {isHabitual ? (
                       <Badge
                         variant="secondary"
