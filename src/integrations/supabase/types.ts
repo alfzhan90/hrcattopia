@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       area_manager_branches: {
         Row: {
           branch_id: string
@@ -56,6 +89,7 @@ export type Database = {
           late_waived: boolean
           manager_notes: string | null
           net_hours: number
+          ot_approved: boolean
           ot_hours: number
           payment_status: Database["public"]["Enums"]["payment_status"]
           regular_hours: number
@@ -75,6 +109,7 @@ export type Database = {
           late_waived?: boolean
           manager_notes?: string | null
           net_hours?: number
+          ot_approved?: boolean
           ot_hours?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
@@ -94,6 +129,7 @@ export type Database = {
           late_waived?: boolean
           manager_notes?: string | null
           net_hours?: number
+          ot_approved?: boolean
           ot_hours?: number
           payment_status?: Database["public"]["Enums"]["payment_status"]
           regular_hours?: number
@@ -231,6 +267,44 @@ export type Database = {
         }
         Relationships: []
       }
+      disciplinary_records: {
+        Row: {
+          created_at: string
+          description: string
+          id: string
+          issued_by: string | null
+          issued_date: string
+          staff_profile_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          staff_profile_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          id?: string
+          issued_by?: string | null
+          issued_date?: string
+          staff_profile_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "disciplinary_records_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       freelancer_invoices: {
         Row: {
           created_at: string
@@ -343,10 +417,52 @@ export type Database = {
           },
         ]
       }
+      onboarding_tasks: {
+        Row: {
+          completed: boolean
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+          sort_order: number
+          staff_profile_id: string
+          task_name: string
+        }
+        Insert: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          staff_profile_id: string
+          task_name: string
+        }
+        Update: {
+          completed?: boolean
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+          sort_order?: number
+          staff_profile_id?: string
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_tasks_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payroll_runs: {
         Row: {
           allowance: number
           basic_pay: number
+          bonus: number
           commission: number
           created_at: string
           eis_employee: number
@@ -372,6 +488,7 @@ export type Database = {
         Insert: {
           allowance?: number
           basic_pay?: number
+          bonus?: number
           commission?: number
           created_at?: string
           eis_employee?: number
@@ -397,6 +514,7 @@ export type Database = {
         Update: {
           allowance?: number
           basic_pay?: number
+          bonus?: number
           commission?: number
           created_at?: string
           eis_employee?: number
@@ -503,6 +621,56 @@ export type Database = {
           },
         ]
       }
+      salary_advances: {
+        Row: {
+          amount: number
+          approved_at: string | null
+          approved_by: string | null
+          created_at: string
+          deduct_month: string | null
+          id: string
+          reason: string | null
+          requested_by: string
+          staff_profile_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deduct_month?: string | null
+          id?: string
+          reason?: string | null
+          requested_by: string
+          staff_profile_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          approved_at?: string | null
+          approved_by?: string | null
+          created_at?: string
+          deduct_month?: string | null
+          id?: string
+          reason?: string | null
+          requested_by?: string
+          staff_profile_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_advances_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       schedules: {
         Row: {
           branch_id: string
@@ -557,6 +725,109 @@ export type Database = {
           },
         ]
       }
+      shift_swaps: {
+        Row: {
+          created_at: string
+          id: string
+          message: string | null
+          requester_profile_id: string
+          requester_schedule_id: string
+          status: string
+          target_profile_id: string
+          target_schedule_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          requester_profile_id: string
+          requester_schedule_id: string
+          status?: string
+          target_profile_id: string
+          target_schedule_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string | null
+          requester_profile_id?: string
+          requester_schedule_id?: string
+          status?: string
+          target_profile_id?: string
+          target_schedule_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_swaps_requester_profile_id_fkey"
+            columns: ["requester_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_requester_schedule_id_fkey"
+            columns: ["requester_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_target_profile_id_fkey"
+            columns: ["target_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_swaps_target_schedule_id_fkey"
+            columns: ["target_schedule_id"]
+            isOneToOne: false
+            referencedRelation: "schedules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_allowances: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          staff_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          staff_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          staff_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_allowances_staff_profile_id_fkey"
+            columns: ["staff_profile_id"]
+            isOneToOne: false
+            referencedRelation: "staff_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_profiles: {
         Row: {
           access_revoke_date: string | null
@@ -568,6 +839,7 @@ export type Database = {
           created_at: string
           device_id: string | null
           email: string | null
+          employment_start_date: string | null
           employment_status: string
           employment_type: Database["public"]["Enums"]["employment_type"]
           exit_date: string | null
@@ -584,6 +856,8 @@ export type Database = {
           passport_number: string | null
           phone_number: string | null
           privacy_tracking_enabled: boolean
+          probation_confirmed: boolean
+          probation_end_date: string | null
           socso_number: string | null
           staff_id: string
           tax_reference_number: string | null
@@ -600,6 +874,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_start_date?: string | null
           employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
           exit_date?: string | null
@@ -616,6 +891,8 @@ export type Database = {
           passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
+          probation_confirmed?: boolean
+          probation_end_date?: string | null
           socso_number?: string | null
           staff_id: string
           tax_reference_number?: string | null
@@ -632,6 +909,7 @@ export type Database = {
           created_at?: string
           device_id?: string | null
           email?: string | null
+          employment_start_date?: string | null
           employment_status?: string
           employment_type?: Database["public"]["Enums"]["employment_type"]
           exit_date?: string | null
@@ -648,6 +926,8 @@ export type Database = {
           passport_number?: string | null
           phone_number?: string | null
           privacy_tracking_enabled?: boolean
+          probation_confirmed?: boolean
+          probation_end_date?: string | null
           socso_number?: string | null
           staff_id?: string
           tax_reference_number?: string | null
