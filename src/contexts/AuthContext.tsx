@@ -19,9 +19,34 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-const ROLE_FETCH_TIMEOUT_MS = 8000;
+const ROLE_FETCH_TIMEOUT_MS = 5000;
+const ROLE_CACHE_KEY = "hrc_role_cache";
+const ROLE_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 hours
 
 export const useAuth = () => useContext(AuthContext);
+
+const getCachedRole = (userId: string): Enums<"app_role"> | null => {
+  try {
+    const raw = localStorage.getItem(ROLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed.userId !== userId) return null;
+    if (Date.now() - parsed.ts > ROLE_CACHE_TTL) return null;
+    return parsed.role as Enums<"app_role">;
+  } catch {
+    return null;
+  }
+};
+
+const setCachedRole = (userId: string, role: Enums<"app_role">) => {
+  try {
+    localStorage.setItem(ROLE_CACHE_KEY, JSON.stringify({ userId, role, ts: Date.now() }));
+  } catch {}
+};
+
+const clearCachedRole = () => {
+  try { localStorage.removeItem(ROLE_CACHE_KEY); } catch {}
+};
 
 const fetchRole = async (userId: string): Promise<Enums<"app_role"> | null> => {
   const { data: isAdmin, error: adminError } = await supabase.rpc("has_role", {
@@ -44,28 +69,29 @@ const fetchRole = async (userId: string): Promise<Enums<"app_role"> | null> => {
 
   const roles = data?.map((entry) => entry.role) ?? [];
 
-  if (roles.includes("admin")) {
-    return "admin";
-  }
-
-  if (roles.includes("area_manager")) {
-    return "area_manager";
-  }
-
-  if (roles.includes("staff")) {
-    return "staff";
-  }
+  if (roles.includes("admin")) return "admin";
+  if (roles.includes("area_manager")) return "area_manager";
+  if (roles.includes("staff")) return "staff";
 
   return null;
 };
 
-const resolveRoleWithTimeout = (userId: string) =>
-  Promise.race<Enums<"app_role"> | null>([
-    fetchRole(userId),
-    new Promise<null>((resolve) => {
-      setTimeout(() => resolve(null), ROLE_FETCH_TIMEOUT_MS);
-    }),
-  ]);
+// Tries up to 3 times with 5s timeout each. Falls back to localStorage cache if all attempts fail.
+const resolveRoleWithTimeout = async (userId: string): Promise<Enums<"app_role"> | null> => {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const role = await Promise.race<Enums<"app_role"> | null>([
+      fetchRole(userId),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), ROLE_FETCH_TIMEOUT_MS)),
+    ]);
+    if (role) {
+      setCachedRole(userId, role);
+      return role;
+    }
+    if (attempt < 2) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+  }
+  // All attempts failed — use cached role so user isn't kicked out on a bad connection
+  return getCachedRole(userId);
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
@@ -136,6 +162,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const signOut = async () => {
+    clearCachedRole();
     await supabase.auth.signOut();
     setSession(null);
     setUser(null);
