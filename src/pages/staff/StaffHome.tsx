@@ -519,6 +519,38 @@ const StaffHome = () => {
       const openLog = openLogs?.[0];
       if (!openLog) throw new Error("No active session found. If it's past 8:30 PM, the system may have auto-checked you out. Contact your admin if your hours are wrong.");
 
+      // ---- GPS geofence check on checkout ----
+      let pos: GeolocationPosition;
+      try {
+        pos = await getCurrentPosition(8000);
+      } catch (gpsErr: any) {
+        throw new Error(gpsErr?.message ?? "GPS required to clock out. Please enable location and try again.");
+      }
+
+      const isAreaMgr = profile?.employment_type === "Area-Manager";
+
+      if (isAreaMgr) {
+        // Area managers can clock out from any branch — just need to be within 200m of one
+        const { data: branches } = await supabase.from("branches").select("latitude, longitude, name");
+        const nearest = (branches ?? []).reduce<{ dist: number; name: string } | null>((best, b) => {
+          const d = haversineDistance(pos.coords.latitude, pos.coords.longitude, b.latitude, b.longitude);
+          return !best || d < best.dist ? { dist: d, name: b.name } : best;
+        }, null);
+        if (!nearest || nearest.dist > 200) {
+          throw new Error("📍 You must be at a branch location to clock out.");
+        }
+      } else {
+        // Regular staff and freelancers must be at the branch they clocked in at
+        const { data: checkoutBranch } = await supabase
+          .from("branches").select("*").eq("id", openLog.branch_id).single();
+        if (checkoutBranch) {
+          const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, checkoutBranch.latitude, checkoutBranch.longitude);
+          if (dist > checkoutBranch.radius_meters) {
+            throw new Error(`📍 You are ${Math.round(dist)}m away from ${checkoutBranch.name}. Move closer to clock out.`);
+          }
+        }
+      }
+
       const checkIn = new Date(openLog.check_in_time);
       const now = new Date();
       const totalHours = (now.getTime() - checkIn.getTime()) / (1000 * 60 * 60);
