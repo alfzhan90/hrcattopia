@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
-const ROLE_FETCH_TIMEOUT_MS = 5000;
+const ROLE_FETCH_TIMEOUT_MS = 4000;
 const ROLE_CACHE_KEY = "hrc_role_cache";
 const ROLE_CACHE_TTL = 1000 * 60 * 60 * 12; // 12 hours
 
@@ -76,9 +76,9 @@ const fetchRole = async (userId: string): Promise<Enums<"app_role"> | null> => {
   return null;
 };
 
-// Tries up to 3 times with 5s timeout each. Falls back to localStorage cache if all attempts fail.
+// Tries up to 2 times with 4s timeout each (max ~9s total). Falls back to localStorage cache if both fail.
 const resolveRoleWithTimeout = async (userId: string): Promise<Enums<"app_role"> | null> => {
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     const role = await Promise.race<Enums<"app_role"> | null>([
       fetchRole(userId),
       new Promise<null>((resolve) => setTimeout(() => resolve(null), ROLE_FETCH_TIMEOUT_MS)),
@@ -87,9 +87,9 @@ const resolveRoleWithTimeout = async (userId: string): Promise<Enums<"app_role">
       setCachedRole(userId, role);
       return role;
     }
-    if (attempt < 2) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    if (attempt < 1) await new Promise((r) => setTimeout(r, 800));
   }
-  // All attempts failed — use cached role so user isn't kicked out on a bad connection
+  // Both attempts failed — use cached role so user isn't kicked out on a bad connection
   return getCachedRole(userId);
 };
 

@@ -17,8 +17,8 @@ const isInAppBrowser = (): boolean => {
 };
 
 const getOpenInChromeUrl = (): string => {
-  const url = encodeURIComponent(window.location.href);
-  return `intent://${window.location.host}${window.location.pathname}#Intent;scheme=${window.location.protocol.replace(":", "")};package=com.android.chrome;end`;
+  const search = window.location.search;
+  return `intent://${window.location.host}${window.location.pathname}${search}#Intent;scheme=${window.location.protocol.replace(":", "")};package=com.android.chrome;end`;
 };
 
 const InAppBrowserBanner = () => {
